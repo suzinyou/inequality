@@ -1,5 +1,5 @@
 /*OPTIONS NONOTES NOSOURCE NODATE NOCENTER LABEL NONUMBER LS=200 PS=MAX;*/
-options DATAmbolgen nosqlremerge;
+options symbolgen nosqlremerge;
 
 libname DATA '/userdata07/room285/data_source/user_data';
 libname OUT '/userdata07/room285/data_out/data_out';
@@ -14,23 +14,54 @@ proc sql;
 		STD_YYYY
 		, HHRR_HEAD_INDI_DSCM_NO
 		, count(*) as HH_SIZE
-		, sum(INC_TOT) as HH_INC_TOT
-		, sum(INC_WAGE) as HH_INC_WAGE
-		, sum(INC_BUS) as HH_INC_BUS
-		, sum(PROP_TXBS_HS) as HH_PROP_TXBS_HS
-		, sum(PROP_TXBS_LND) as HH_PROP_TXBS_LND
-		, sum(PROP_TXBS_BLDG) as HH_PROP_TXBS_BLDG
-		, sum(PROP_TXBS_TOT) as PROP_TXBS_BLDG
+		, sum(INC_TOT) as INC_TOT
+		, sum(INC_WAGE) as INC_WAGE
+		, sum(INC_BUS) as INC_BUS
+		, sum(PROP_TXBS_HS) as PROP_TXBS_HS
+		, sum(PROP_TXBS_LND) as PROP_TXBS_LND
+		, sum(PROP_TXBS_BLDG) as PROP_TXBS_BLDG
+		, sum(PROP_TXBS_TOT) as PROP_TXBS_TOT
+		, max(sido) as SIDO
+		, max(sigungu) as SIGUNGU
 		/* 가구 유형*/
 		, (case
 			when sum(case when GAIBJA_TYPE = "5" or GAIBJA_TYPE = "6" then 1 else 0 end) > 0 then 1 
-			when sum(case when GAIBJA_TYPE = "1" or GAIBJA_TYPE = "2" then 1 else 0 end) > 0 then 1 
-			when sum(case when GAIBJA_TYPE = "7" or GAIBJA_TYPE = "8" then 1 else 0 end) > 0 then 1 
+			when sum(case when GAIBJA_TYPE = "1" or GAIBJA_TYPE = "2" then 1 else 0 end) > 0 then 2 
+			when sum(case when GAIBJA_TYPE = "7" or GAIBJA_TYPE = "8" then 1 else 0 end) > 0 then 3
 		else 4 end) as HH_GAIBJA_TYPE
 		/*sum(PROP_TXBS_HS)/sqrt(count(*)) as hh_prop_txbs_hs,*/
 	from STORE.SEOUL
 	group by STD_YYYY, HHRR_HEAD_INDI_DSCM_NO;
 quit;
+
+/* 1.2  가구 유형에 따른 평균, 중위 소득 */
+%macro compute_stat_by_hh_gaib_type;
+%let vnames = inc_tot inc_wage inc_bus;
+%do i=1 %to %sysfunc(countw(&vnames));
+	proc sql;
+	create table tmp_gaibja_&i as
+	select STD_YYYY
+		, HH_GAIBJA_TYPE
+		, count(*) as COUNT
+		, put("&vname", $32.) as vname
+		, mean(&vname) AS MEAN
+		, median(&vname) AS MEDIAN
+	from STORE.SEOUL_HH
+	WHERE HHRR_HEAD_INDI_DSCM_NO NE .
+	group by HH_GAIBJA_TYPE, STD_YYYY;
+	QUIT;
+%end;
+data OUT.SEOUL_HH_GAIBJATYPE;
+set work.tmp_gaibja_:;
+run;
+%mend;
+%compute_stat_by_hh_gaib_type;
+
+proc export data=OUT.SEOUL_HH_GAIBJATYPE
+	outfile="/userdata07/room285/data_out/data_out/seoul_hh_gaibjatype.csv"
+	replace;
+run;
+
 
 /* 1.2 Household head's demographic info */
 proc sql;
@@ -76,76 +107,3 @@ proc means data=DATA.household_inc noprint;
 	output out=DATA.hh_inc_yearly_basic mean= min= max= median=/autoname;
 run;
 
-/* 2.2 100 percentiles of total income --------------------------------------*/
-/* 2.2.1 Rank, into 100 groups */
-proc sort data=DATA.household_inc;
-	by STD_YYYY;
-run;
-
-OPTIONS NOSQLREMERGE;
-
-sasfile DATA.household_inc close;
-
-/* 2.2.2 Compute lower&upper bounds and mean (and sum, for income share) for 
-         each percentile */
-%MACRO get_rank_boundaries(income_ranked_dataset, inc_var, rank_var, output_dataset);
-	proc sql;
-		create table DATA.&output_dataset as
-		select STD_YYYY, &rank_var, 
-			min(&inc_var) as p_min, 
-			max(&inc_var) as p_max,
-			mean(&inc_var) as p_mean,
-			sum(&inc_var) as p_sum,
-			count(*) as size
-		from &income_ranked_dataset
-		group by STD_YYYY, &rank_var order by STD_YYYY, &rank_var;
-		quit;
-	run;
-%MEND get_rank_boundaries;
-
-sasfile DATA.household_inc_ranked load;
-
-%get_rank_boundaries(DATA.household_inc_ranked, hh_inc_tot, hh_rank, hh_inc_boundary_p100);
-%get_rank_boundaries(DATA.household_inc_ranked, eq_inc_tot, eq_rank, eq_inc_boundary_p100);
-
-/* 2.3 Get TOP 1%'s deciles -------------------------------------------------*/
-proc rank data=DATA.household_inc_ranked 
-groups=10 out=_hh_inc_ranked_top1pct ties=low;
-	where hh_rank eq 99;
-	var hh_inc_tot;
-	by STD_YYYY;
-	ranks hh_rank;  /* replace */
-run;
-
-proc rank data=DATA.household_inc_ranked
-groups=10 out=_eq_inc_ranked_top1pct ties=low;
-	where eq_rank eq 99;
-	var eq_inc_tot;
-	by STD_YYYY;
-	ranks eq_rank;
-run;
-
-sasfile DATA.household_inc_ranked close;
-
-%get_rank_boundaries(work._hh_inc_ranked_top1pct, hh_inc_tot, hh_rank, hh_inc_boundary_top1pct_10);
-%get_rank_boundaries(work._eq_inc_ranked_top1pct, eq_inc_tot, eq_rank, eq_inc_boundary_top1pct_10);
-
-/*---------------------------------------------------------------------------*/
-
-/* ods html file='C:\Users\Suzin\workspace\inequality\data\processed\household income.html'; */
-
-/* proc tabulate data=DATA.all out=DATA.household_inc; */
-/*   class STD_YYYY HHRR_HEAD_INDI_DSCM_NO_MY; */
-/*   var INC_TOT; */
-/*   tables STD_YYYY, HHRR_HEAD_INDI_DSCM_NO_MY, INC_TOT*(N sum); */
-/* run; */
-/*  */
-/*  */
-/* proc report data=mydata nowd out=DATA.repout; */
-/*   column region payout payout=paysum; */
-/*   define region / group style(column)=Header; */
-/*   define payout / n 'Count Indicator'; */
-/*   define paysum / sum 'Payout Sum'; */
-/* run; */
-
-/* ods html close; */
