@@ -1,6 +1,5 @@
 options symbolgen nosqlremerge;
 
-libname DATA '/userdata07/room285/data_source/user_data';
 libname OUT '/userdata07/room285/data_out/data_out';
 libname STORE '/userdata07/room285/data_out/data_store';
 
@@ -14,25 +13,61 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /*	%let vname=inc_wage;*/
 /*	%let dname = store.&region._&unit._&year;*/
 
-	%if &unit=indi %then 
+	/* Set dataset name and age lower bound based on analysis unit */
+	%if &unit=indi %then
 		%do;
 			%let dname=store.&region._&year;
+			/* age lower bound, inclusive */
+			%let age_lb_incl=20;
+			/*TODO: 연령 기준? 20세 이상 또는 19세 이상 등*/
+			/* SORT BY THE VARIABLE */
+			%if &vname=inc_tot or &vname=prop_txbs_tot %then 
+				%do;
+					proc sql;
+					create table work.tmp as
+					select sum(&vname, 0) as &vname /* FILL NULL WITH 0 */
+					from &dname
+					where age >= &age_lb_incl
+					order by &vname;
+					quit;
+				%end;
+			%else  
+				%do;
+					proc sql;
+					create table work.tmp as
+					select STD_YYYY
+						, &vname /* FILL NULL WITH 0 */
+					from &dname
+					where age >= &age_lb_incl
+					order by &vname;
+					quit;
+				%end;
 		%end;
-	%else  
+	%else 
 		%do;
 			%let dname=store.&region._&unit._&year;
+			/* SORT BY THE VARIABLE */
+			%if &vname=inc_tot or &vname=prop_txbs_tot %then 
+				%do;
+					proc sql;
+					create table work.tmp as
+					select sum(&vname, 0) as &vname /* FILL NULL WITH 0 */
+					from &dname
+					order by &vname;
+					quit;
+				%end;
+			%else  
+				%do;
+					proc sql;
+					create table work.tmp as
+					select STD_YYYY
+						, &vname /* FILL NULL WITH 0 */
+					from &dname
+					order by &vname;
+					quit;
+				%end;
 		%end;
-	%put &dname;
 
-	/* SORT BY THE VARIABLE */
-	proc sql;
-	create table work.tmp as
-	select STD_YYYY
-		, &vname
-	from &dname
-	where not missing(&vname) /* EXCLUDE INDIVIDUALS WITH MISSING VALUES*/
-	order by &vname;
-	quit;
 
 	/* GET THE TOTAL(i.e. SUM) OF THE VARIABLE */
 	proc sql;
@@ -104,24 +139,24 @@ libname STORE '/userdata07/room285/data_out/data_store';
 
 %macro compute_indices_all(region, unit);
 	/*Create an empty table into which we'll accumulate yearly results*/
-/*	proc sql;*/
-/*	create table out.&region._&unit._indices (*/
-/*		std_yyyy char(4)*/
-/*		, var char(32)*/
-/*		, gini num*/
-/*		, iqsr num*/
-/*		, rpr num*/
-/*		, median num*/
-/*		, mean num*/
-/*		, mean_over_median num*/
-/*	);*/
-/*	quit;*/
+	proc sql;
+	create table out.&region._&unit._indices (
+		std_yyyy char(4)
+		, var char(32)
+		, gini num
+		, iqsr num
+		, rpr num
+		, median num
+		, mean num
+		, mean_over_median num
+	);
+	quit;
 
 	/* Set variables of interest */
-	%let vnames=inc_wage inc_bus inc_tot prop_txbs_hs prop_txbs_tot;
+	%let vnames=inc_tot inc_wage inc_bus prop_txbs_hs prop_txbs_tot;
 
 	/* Compute indices for each year, for each variable */
-	%do year=2012 %to 2018;
+	%do year=2003 %to 2010;
 		%do i=1 %to %sysfunc(countw(&vnames));
 			%let vname = %scan(&vnames, &i);
 			%compute_indices(&year, &region, &unit, &vname);
@@ -139,7 +174,7 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /*%compute_indices_all(seoul, indi);*/
 
 /* Execute on Seoul, with unit=households*/
-%compute_indices_all(seoul, hh);
+/*%compute_indices_all(seoul, hh);*/
 
 /* Execute on Seoul, with unit=equivalized*/
 /*%compute_indices_all(seoul, eq);*/

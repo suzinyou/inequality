@@ -7,9 +7,9 @@ libname STORE '/userdata07/room285/data_out/data_store';
 
 /* 1. Generate household level data -----------------------------------------*/
 /* 1.1 Household income data + equivalized income (total, wage, business) ---*/
-
+%macro generate_hh_dataset(region);
 proc sql;
-	create table STORE.SEOUL_HH as
+	create table STORE.&region._HH as
 	select 
 		STD_YYYY
 		, HHRR_HEAD_INDI_DSCM_NO
@@ -22,17 +22,21 @@ proc sql;
 		, sum(PROP_TXBS_BLDG) as PROP_TXBS_BLDG
 		, sum(PROP_TXBS_TOT) as PROP_TXBS_TOT
 		, max(sido) as SIDO
-		, max(sigungu) as SIGUNGU
+/*		, max(sigungu) as SIGUNGU*/
 		/* 가구 유형*/
-		, (case
-			when sum(case when GAIBJA_TYPE = "5" or GAIBJA_TYPE = "6" then 1 else 0 end) > 0 then 1 
-			when sum(case when GAIBJA_TYPE = "1" or GAIBJA_TYPE = "2" then 1 else 0 end) > 0 then 2 
-			when sum(case when GAIBJA_TYPE = "7" or GAIBJA_TYPE = "8" then 1 else 0 end) > 0 then 3
-		else 4 end) as HH_GAIBJA_TYPE
+/*		, (case*/
+/*			when sum(case when GAIBJA_TYPE = "5" or GAIBJA_TYPE = "6" then 1 else 0 end) > 0 then 1 */
+/*			when sum(case when GAIBJA_TYPE = "7" or GAIBJA_TYPE = "8" then 1 else 0 end) > 0 then 2 */
+/*			when sum(case when GAIBJA_TYPE = "1" or GAIBJA_TYPE = "2" then 1 else 0 end) > 0 then 3*/
+/*		else 4 end) as HH_GAIBJA_TYPE*/
 		/*sum(PROP_TXBS_HS)/sqrt(count(*)) as hh_prop_txbs_hs,*/
-	from STORE.SEOUL
+	from STORE.&region
 	group by STD_YYYY, HHRR_HEAD_INDI_DSCM_NO;
 quit;
+%mend;
+/*%generate_hh_dataset(SEOUL);*/
+/*%generate_hh_dataset(KR);*/
+/*%generate_hh_dataset(KRPANEL);*/
 
 /* 1.2  가구 유형에 따른 평균, 중위 소득 */
 %macro compute_stat_by_hh_gaib_type;
@@ -63,22 +67,28 @@ proc export data=OUT.SEOUL_HH_GAIBJATYPE
 	replace;
 run;
 
-/* CREATE EQUIVALIZED INCOME/TAXBASE TABLE */
+/* 2. CREATE EQUIVALIZED INCOME/TAXBASE TABLE ---------------------------*/
+%macro generate_eq_dataset(region);
 proc sql;
-create table STORE.SEOUL_EQ as
+create table STORE.&region._EQ as
 select a.STD_YYYY as STD_YYYY
 	, b.INC_TOT/sqrt(b.HH_SIZE) as INC_TOT
 	, b.INC_WAGE/sqrt(b.HH_SIZE) as INC_WAGE
 	, b.INC_BUS/sqrt(b.HH_SIZE) as INC_BUS
 	, b.PROP_TXBS_HS/sqrt(b.HH_SIZE) as PROP_TXBS_HS
 	, b.PROP_TXBS_TOT/sqrt(b.HH_SIZE) as PROP_TXBS_TOT
-from STORE.SEOUL as a
-left join STORE.SEOUL_HH as b
+from STORE.&region as a
+left join STORE.&region._HH as b
 on a.STD_YYYY = b.STD_YYYY
 	and a.HHRR_HEAD_INDI_DSCM_NO = b.HHRR_HEAD_INDI_DSCM_NO;
 quit;
+%mend;
+/*%%generate_eq_dataset(SEOUL);*/
+%generate_eq_dataset(KR);
+/*%generate_eq_dataset(KRPANEL);*/
 
-/* SPLIT SEOUL_HH AND SEOUL_EQ BY YEAR */
+
+/* SPLIT SEOUL_HH AND SEOUL_EQ BY YEAR ------------------------------*/
 /* (SOME OPERATIONS CAN ONLY HANDLE 1 YR AT A TIME)*/
 %macro split_by_year(prefix);
 %do year=2003 %to 2018;
