@@ -11,7 +11,6 @@ from src.dictionary import translate, region2ko, unit2ko
 
 def preprocess_quantiles(_df, _df_toppct):
     """Preprocess files of type `{region}_{unit}_centile.csv` and `{region}_{unit}_top1p_1000tile.csv`"""
-
     df = _df.copy()
 
     # drop null rank (for variables for which null values were excluded from analysis)
@@ -79,6 +78,12 @@ def approx_gini(_df):
 
 
 def get_income_share_summary(df_centile, df_toppct):
+    """
+    :param df_centile: pd.DataFrame
+        preprocessed {region}_{unit}_centile.csv !! (rank is 1~100)
+    :param df_toppct: pd.DataFrame
+        preprocessed {region}_{unit}_top1p_1000tile.csv !!
+    """
     masks = {
         'Bottom 20%': df_centile['rank'] < 20,
         'Next 30%': (df_centile['rank'] >= 30) & (df_centile['rank'] < 50),
@@ -157,5 +162,3 @@ if __name__ == "__main__":
                            y="share",
                            title=g,
                            save_name=f"income_share-{region}_{unit}-{g[:-1]}.png")
-
-            

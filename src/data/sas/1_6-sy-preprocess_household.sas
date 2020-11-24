@@ -8,35 +8,104 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /* 1. Generate household level data -----------------------------------------*/
 /* 1.1 Household income data + equivalized income (total, wage, business) ---*/
 %macro generate_hh_dataset(region);
+%if &region=seoul %then
+	%do;
+		%let extra_reg_col=, max(sigungu) as SIGUNGU;
+	%end;
+%else
+	%do;
+		%let extra_reg_col='';
+	%end;
+
 proc sql;
-	create table STORE.&region._HH as
-	select 
-		STD_YYYY
+	create table WORK.TMP_HH as
+	select STD_YYYY
 		, HHRR_HEAD_INDI_DSCM_NO
 		, count(*) as HH_SIZE
 		, sum(INC_TOT) as INC_TOT
 		, sum(INC_WAGE) as INC_WAGE
 		, sum(INC_BUS) as INC_BUS
+		, sum(INC_INT) as INC_INT
+		, sum(INC_DIVID) as INC_DIVID
+		, sum(INC_FIN) as INC_FIN
+		, sum(INC_OTHR) as INC_OTHR
+		, sum(INC_PNSN_NATL) as INC_PNSN_NATL
+		, sum(INC_PNSN_OCCUP) as INC_PNSN_OCCUP
+		, sum(INC_PNSN) as INC_PNSN
+		, sum(INC_MAIN) as INC_MAIN
 		, sum(PROP_TXBS_HS) as PROP_TXBS_HS
 		, sum(PROP_TXBS_LND) as PROP_TXBS_LND
 		, sum(PROP_TXBS_BLDG) as PROP_TXBS_BLDG
 		, sum(PROP_TXBS_TOT) as PROP_TXBS_TOT
+		, sum(PROP_TXBS_SHIP) as PROP_TXBS_SHIP
 		, max(sido) as SIDO
-/*		, max(sigungu) as SIGUNGU*/
-		/* 가구 유형*/
-/*		, (case*/
-/*			when sum(case when GAIBJA_TYPE = "5" or GAIBJA_TYPE = "6" then 1 else 0 end) > 0 then 1 */
-/*			when sum(case when GAIBJA_TYPE = "7" or GAIBJA_TYPE = "8" then 1 else 0 end) > 0 then 2 */
-/*			when sum(case when GAIBJA_TYPE = "1" or GAIBJA_TYPE = "2" then 1 else 0 end) > 0 then 3*/
-/*		else 4 end) as HH_GAIBJA_TYPE*/
-		/*sum(PROP_TXBS_HS)/sqrt(count(*)) as hh_prop_txbs_hs,*/
+		&extra_reg_col
+		, (case
+			when sum(case when GAIBJA_TYPE = "7" then 1 else 0 end) > 0 then 1 
+			else 0 end) as HH_GAIBJA_TYPE_7
 	from STORE.&region
 	group by STD_YYYY, HHRR_HEAD_INDI_DSCM_NO;
 quit;
-%mend;
+
+proc sql;
+	create table WORK.TMP_HH_DEM as
+	select STD_YYYY
+		, HHRR_HEAD_INDI_DSCM_NO
+		, SEX_TYPE
+		, age
+		, JUNG_NO
+	from STORE.&region
+	where HHRR_HEAD_INDI_DSCM_NO eq INDI_DSCM_NO;
+quit;
+
+proc sql;
+	create table STORE.&region._HH as
+	select a.*
+		, b.SEX_TYPE
+		, b.age
+		, b.JUNG_NO
+	from WORK.TMP_HH as a
+	inner join WORK.TMP_HH_DEM as b
+	/* inner join to drop any HH Head IDs that don't exist as individual IDs */
+	on a.STD_YYYY=b.STD_YYYY
+		and a.HHRR_HEAD_INDI_DSCM_NO=b.HHRR_HEAD_INDI_DSCM_NO;
+quit;
+%mend generate_hh_dataset;
+
+/* 1.2 Generate household dataset that mimics survey household units */
+%macro generate_hh2_dataset(region);
+proc sql;
+create table store.&region._HH2 as /*after figuring out missing household heads, change this to work.&region._HH2*/
+select STD_YYYY
+	, JUNG_NO
+	, sum(HH_SIZE) as HH_SIZE
+	, sum(INC_TOT) as INC_TOT
+	, sum(INC_WAGE) as INC_WAGE
+	, sum(INC_BUS) as INC_BUS
+	, sum(INC_INT) as INC_INT
+	, sum(INC_DIVID) as INC_DIVID
+	, sum(INC_FIN) as INC_FIN
+	, sum(INC_OTHR) as INC_OTHR
+	, sum(INC_PNSN_NATL) as INC_PNSN_NATL
+	, sum(INC_PNSN_OCCUP) as INC_PNSN_OCCUP
+	, sum(INC_PNSN) as INC_PNSN
+	, sum(INC_MAIN) as INC_MAIN
+	, sum(PROP_TXBS_HS) as PROP_TXBS_HS
+	, sum(PROP_TXBS_LND) as PROP_TXBS_LND
+	, sum(PROP_TXBS_BLDG) as PROP_TXBS_BLDG
+	, sum(PROP_TXBS_TOT) as PROP_TXBS_TOT
+	, sum(PROP_TXBS_SHIP) as PROP_TXBS_SHIP
+	, max(age) as age  /* Is this ok? */
+from STORE.&region._HH
+where JUNG_NO  /* drop null */
+group by STD_YYYY, JUNG_NO;
+%mend generate_hh2_dataset;
+
+/* Seoul takes long -- check KR first --*/
 /*%generate_hh_dataset(SEOUL);*/
 /*%generate_hh_dataset(KR);*/
-/*%generate_hh_dataset(KRPANEL);*/
+/*%generate_hh2_dataset(SEOUL);*/
+/*%generate_hh2_dataset(KR);*/
 
 /* 1.2  가구 유형에 따른 평균, 중위 소득 */
 %macro compute_stat_by_hh_gaib_type;
