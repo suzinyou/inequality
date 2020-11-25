@@ -146,8 +146,24 @@ quit;
 		&subregunit, year_lb=&year_lb, year_ub=&year_ub);
 %end;
 
-data out.&savename;
-set work.&savename._:;
+/* CREATE OUTPUT DATASET */
+%if %sysfunc(exist(out.&savename)) %then %do;
+	data out.&savename;
+	set 
+		out.&savename
+		work.&savename._:;
+	run;
+	%end;
+%else %do;
+	data out.&savename;
+	set work.&savename._:;
+	run;
+	%end;
+
+/* DELETE TEMP DATASETS */
+proc datasets lib=work nolist kill;
+quit;
+run;
 
 proc export data=out.&savename
 	/* CHANGE OUTFILE PATH */
@@ -157,6 +173,52 @@ proc export data=out.&savename
 	sheet="&savename";
 run;
 %mend compute_mean_median;
+
+
+%macro compute_age_group_income(region); 
+%local dname savename;
+%let dname = store.&region;
+%let savename = &region._agegroup;
+proc sql;
+create table out.&savename as
+select STD_YYYY
+	, (case when age < 15 then "0-14"
+		when age >= 15 and age < 20 then "15-19"
+		when age >= 20 and age < 25 then "20-24"
+		when age >= 25 and age < 30 then "25-29"
+		when age >= 30 and age < 35 then "30-34"
+		when age >= 35 and age < 40 then "35-39"
+		when age >= 40 and age < 45 then "40-44"
+		when age >= 45 and age < 50 then "45-49"
+		when age >= 50 and age < 55 then "50-54"
+		when age >= 55 and age < 60 then "55-59"
+		when age >= 60 and age < 65 then "60-64"
+		when age >= 65 and age < 70 then "65-69"
+		when age >= 70 and age < 75 then "70-74"
+		when age >= 75 and age < 80 then "75-79"
+		when age >= 80 and age < 85 then "80-84"
+		else "85+" end) as age_group
+	, count(*) as count
+	, mean(inc_tot) as mean_inc_tot
+    , median(inc_tot) as median_inc_tot
+    , mean(inc_wage) as mean_inc_wage
+    , median(inc_wage) as median_inc_wage
+	, mean(inc_bus) as mean_inc_bus
+    , median(inc_bus) as median_inc_bus
+    , mean(prop_txbs_hs) as mean_inc_bus
+    , median(prop_txbs_hs) as median_inc_bus
+from &dname
+group by STD_YYYY, age_group;
+quit;
+
+proc export data=out.&savename
+	/* TODO: CHANGE OUTFILE PATH TO mean_median.xlsx? */
+	outfile="/userdata07/room285/data_out/output-mean_median/mean_median_agegroup.xlsx" 
+	DBMS=xlsx
+	append;
+	sheet="&savename";
+run;
+%mend;
 
 /* TO DO: recalculate seoul_smpl after sampling based on HHs -------*/
 /*%make_dataset_popcnt(seoul_smpl, sigungu);*/
@@ -182,11 +244,23 @@ run;
 /*%compute_mean_median(KR, eq, vnames=inc_tot);*/
 /*%compute_mean_median(SEOUL, eq, vnames=inc_tot);*/
 
+/*%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=15, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_wage inc_bus, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, capita, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, earner, vnames=inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);*/
+
+/*%compute_age_group_income(kr);*/
+
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
 
-%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=20, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=15, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, adult, vnames=inc_wage inc_bus, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, capita, vnames=inc_tot, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, earner, vnames=inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, adult, vnames=inc_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);
+%compute_mean_median(KR, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);
+%compute_mean_median(KR, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
+
+%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);
+%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
+
+%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);
+%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
+
