@@ -46,19 +46,20 @@ proc sql;
 create table tmp_var as
 	select &groupby_vars., &vname
 from &dname
-&where_expr;
+&where_expr
+order by &vname;
 quit;
 
 /* 100ºÐÀ§ */
 proc rank data=work.tmp_var groups=100 out=tmp ties=low;
 	var &vname;
-	by STD_YYYY;
+	by STD_YYYY &subregunit;
 	ranks rnk;
 run;
 
 proc sql;
 create table &savenamei as
-	select STD_YYYY
+	select &groupby_vars
 		, put("&vname", $32.) as var
 		, min(rnk) as rank
 		, count(*) as freq
@@ -134,8 +135,24 @@ run;
 		&subregunit, year_lb=&year_lb, year_ub=&year_ub);
 %end;
 
-data out.&savename;
-set work.&savename._:;
+/* CREATE OUTPUT DATASET */
+%if %sysfunc(exist(out.&savename)) %then %do;
+	data out.&savename;
+	set 
+		out.&savename
+		work.&savename._:;
+	run;
+	%end;
+%else %do;
+	data out.&savename;
+	set work.&savename._:;
+	run;
+	%end;
+
+/* DELETE TEMP DATASETS */
+proc datasets lib=work nolist kill;
+quit;
+run;
 
 proc export data=out.&savename
 	/* CHANGE OUTFILE PATH */
@@ -152,3 +169,6 @@ run;
 /*%compute_quantiles(SEOUL, adult, vnames=inc_wage inc_bus, adult_age=20, earner=1, year_lb=2006, year_ub=2018);*/
 
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
+
+%compute_quantiles(SEOUL, adult, vnames=inc_tot prop_txbs_tot, adult_age=20, subregunit=sigungu, earner=0, year_lb=2006, year_ub=2018);
+%compute_quantiles(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd propt_txbs_bldg, adult_age=20, subregunit=sigungu, earner=1, year_lb=2006, year_ub=2018);
