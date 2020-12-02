@@ -8,7 +8,7 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /* 1. Generate household level data -----------------------------------------*/
 /* 1.1 Household income data + equivalized income (total, wage, business) ---*/
 %macro generate_hh_dataset(region);
-%if &region=seoul %then
+%if &region=SEOUL or &region=seoul %then
 	%do;
 		%let extra_reg_col=, max(sigungu) as SIGUNGU;
 	%end;
@@ -101,11 +101,24 @@ where JUNG_NO  /* drop null */
 group by STD_YYYY, JUNG_NO;
 %mend generate_hh2_dataset;
 
-/* Seoul takes long -- check KR first --*/
 /*%generate_hh_dataset(SEOUL);*/
 /*%generate_hh_dataset(KR);*/
 /*%generate_hh2_dataset(SEOUL);*/
 /*%generate_hh2_dataset(KR);*/
+
+proc sql;
+create table store.SEOUL_HH as
+select a.*, b.sigungu as SIGUNGU
+from store.SEOUL_HH as a
+left join (
+	select STD_YYYY
+		, HHRR_HEAD_INDI_DSCM_NO
+		, max(sigungu) as sigungu 
+	from store.SEOUL 
+	group by STD_YYYY, HHRR_HEAD_INDI_DSCM_NO) as b
+on a.STD_YYYY=b.STD_YYYY
+	and a.HHRR_HEAD_INDI_DSCM_NO=b.HHRR_HEAD_INDI_DSCM_NO;
+quit;
 
 /* 1.2  가구 유형에 따른 평균, 중위 소득 */
 %macro compute_stat_by_hh_gaib_type;
@@ -142,9 +155,6 @@ proc sql;
 create table STORE.&region._EQ as
 select a.STD_YYYY as STD_YYYY
 	, b.INC_TOT/sqrt(b.HH_SIZE) as INC_TOT
-	, b.INC_WAGE/sqrt(b.HH_SIZE) as INC_WAGE
-	, b.INC_BUS/sqrt(b.HH_SIZE) as INC_BUS
-	, b.PROP_TXBS_HS/sqrt(b.HH_SIZE) as PROP_TXBS_HS
 	, b.PROP_TXBS_TOT/sqrt(b.HH_SIZE) as PROP_TXBS_TOT
 from STORE.&region as a
 left join STORE.&region._HH as b
@@ -152,7 +162,7 @@ on a.STD_YYYY = b.STD_YYYY
 	and a.HHRR_HEAD_INDI_DSCM_NO = b.HHRR_HEAD_INDI_DSCM_NO;
 quit;
 %mend;
-/*%%generate_eq_dataset(SEOUL);*/
+%generate_eq_dataset(SEOUL);
 %generate_eq_dataset(KR);
 /*%generate_eq_dataset(KRPANEL);*/
 

@@ -257,7 +257,7 @@ run;
 	year_ub=2018 /* year upperbound */
 );
 /* Compute mean and median income or prop_txbs according to unit */
-%local i vname;
+%local i vname savename subreg_coldef;
 
 /* Set savename */
 %if &subregunit='' %then %do;
@@ -313,94 +313,110 @@ run;
 /*%compute_indices(region=seoul_smpl, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2006, year_ub=2011);*/
 /*%compute_indices(region=seoul_smpl, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2012, year_ub=2018);*/
 
-/*%compute_indices(region=kr, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2006, year_ub=2018);*/
-/*%compute_indices(region=kr, unit=adult, vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, indices=gini iqsr rpr, subregunit='', earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
-
+/* 전국 20세 이상 (총소득, 총재산과표) --------------------------------*/
 /*%compute_indices(*/
-/*	region=seoul_smpl, */
+/*	region=kr, */
 /*	unit=adult, */
 /*	vnames=inc_tot prop_txbs_tot, */
 /*	indices=gini iqsr rpr, */
 /*	subregunit='', */
-/*	earner=0, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*	earner=0, */
+/*	adult_age=20, */
+/*	year_lb=2006, year_ub=2018);*/
+
+/* 전국 20세 이상 소득자 ---------------------------------------------*/
 /*%compute_indices(*/
-/*	region=seoul_smpl, */
+/*	region=kr, */
 /*	unit=adult, */
 /*	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
 /*	indices=gini iqsr rpr, */
-/*	subregunit='', earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*	subregunit='', */
+/*	earner=1, */
+/*	adult_age=20, */
+/*	year_lb=2006, year_ub=2018);*/
 
+/* 서울 20세 이상 (총재산과표) ---------------------------------------*/
 /*%compute_indices(*/
-/*	region=seoul_smpl, unit=adult, */
-/*	vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit=sigungu, earner=0, adult_age=20, year_lb=2010, year_ub=2018);*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2006, year_ub=2009);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2010, year_ub=2013);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2014, year_ub=2018);*/
 
+/* 서울 20세 이상 소득자 ---------------------------------------------*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=1, adult_age=20, year_lb=2006, year_ub=2009);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit='', earner=1, adult_age=20, year_lb=2010, year_ub=2013);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=1, adult_age=20, year_lb=2014, year_ub=2018);*/
 
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2006, year_ub=2009);
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2010, year_ub=2013);
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=prop_txbs_tot, indices=gini iqsr rpr, subregunit='', earner=0, adult_age=20, year_lb=2014, year_ub=2018);
+/* 25개구별 20세 이상 (총소득, 총재산세과표) --------------------------*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot prop_txbs_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit=sigungu, earner=0, adult_age=20, year_lb=2006, year_ub=2009);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot prop_txbs_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit=sigungu, earner=0, adult_age=20, year_lb=2010, year_ub=2013);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot prop_txbs_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit=sigungu, earner=0, adult_age=20, year_lb=2014, year_ub=2018);*/
 
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, 
-	indices=gini iqsr rpr, 
-	subregunit='', earner=1, adult_age=20, year_lb=2006, year_ub=2009);
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, 
-	indices=gini iqsr rpr,
-	subregunit='', earner=1, adult_age=20, year_lb=2010, year_ub=2013);
-%compute_indices(
-	region=seoul, unit=adult, 
-	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, 
-	indices=gini iqsr rpr, 
-	subregunit='', earner=1, adult_age=20, year_lb=2014, year_ub=2018);
+/* 25개구별 20세 이상 소득자 -----------------------------------------*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2009);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit=sigungu, earner=1, adult_age=20, year_lb=2010, year_ub=2013);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit=sigungu, earner=1, adult_age=20, year_lb=2014, year_ub=2018);*/
 
+/* 전국&서울 15세 이상 총소득 ---------------------------------------------*/
+/*%compute_indices(*/
+/*	region=kr, unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=0, adult_age=15, year_lb=2006, year_ub=2018);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=0, adult_age=15, year_lb=2006, year_ub=2009);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=0, adult_age=15, year_lb=2010, year_ub=2013);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr, */
+/*	subregunit='', earner=0, adult_age=15, year_lb=2014, year_ub=2018);*/
 
-/*%compute_indices(region=seoul, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit=sigungu, earner=0, adult_age=20, year_lb=2006, year_ub=2009);*/
-/*%compute_indices(region=seoul, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit=sigungu, earner=0, adult_age=20, year_lb=2010, year_ub=2013);*/
-/*%compute_indices(region=seoul, unit=adult, vnames=inc_tot prop_txbs_tot, indices=gini iqsr rpr, subregunit=sigungu, earner=0, adult_age=20, year_lb=2014, year_ub=2018);*/
-/**/
-/*%macro amend;*/
-/*%let savename=seoul_smpl_adult20;*/
-/*%let vname=inc_tot;*/
-/*proc sql;*/
-/*	create table work.&savename as*/
-/*		select "&vname" as var, **/
-/*	from work.tmp_gini;*/
-/*	quit;*/
-/**/
-/*proc sql;*/
-/*alter table work.&savename*/
-/*add iqsr num, rpr num;*/
-/*update work.&savename as a*/
-/*set iqsr=(*/
-/*	select iqsr*/
-/*	from tmp_iqsr as b */
-/*	where a.STD_YYYY=b.STD_YYYY),*/
-/*	rpr=(*/
-/*	select rpr*/
-/*	from tmp_rpr as b */
-/*	where a.STD_YYYY=b.STD_YYYY);*/
-/*quit;*/
-/**/
-/*proc sql;*/
-/*insert into out.&savename*/
-/*select * from work.&savename.;*/
-/*quit;*/
-/**/
-/*proc export data=out.&savename*/
-/*	/* CHANGE OUTFILE PATH */*/
-/*	outfile="/userdata07/room285/data_out/output-indices/indices.xlsx"*/
-/*	DBMS=xlsx*/
-/*	replace;*/
-/*	sheet="&savename";*/
-/*run;*/
-/*%mend;*/
-/**/
-/*%amend;*/
+/*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/

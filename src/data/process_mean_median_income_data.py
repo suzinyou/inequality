@@ -24,6 +24,8 @@ def load_cpi():
 
 def load_sido_names():
     sidodf = pd.read_csv(map_dir / 'CTPRVN.csv')
+    # sidodf['CTPRVN_CD'].apply(lambda x: str(x)[2:])
+    return sidodf
 
 
 def load_sigungu_name():
