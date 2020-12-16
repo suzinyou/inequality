@@ -3,7 +3,6 @@ options symbolgen nosqlremerge;
 libname OUT '/userdata07/room285/data_out/output-quantiles';
 libname STORE '/userdata07/room285/data_out/data_store';
 
-
 /* 100 분위 */
 %macro compute_quantiles_var(
 	i, region, unit, earner, adult_age, vname, savenamei,
@@ -12,7 +11,8 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	group by STD_YYYY gives memory error */
 %local dname groupby_vars where_expr;
 
-%if &unit=hh or &unit=eq %then %do;
+%let unit_prefix=%sysfunc(substr(&unit,1,2));
+%if "&unit_prefix"="hh" or "&unit_prefix"="eq" %then %do;
 	%let dname=store.&region._&unit;
 	%end;
 %else %do;
@@ -22,9 +22,11 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /* If sub-region unit is specified */
 %if &subregunit~='' %then %do;
 	%let groupby_vars=STD_YYYY, &subregunit;
+	%let data_by_vars=STD_YYYY &subregunit;
 	%end;
 %else %do;
 	%let groupby_vars=STD_YYYY;
+	%let data_by_vars=STD_YYYY;
 	%end;
 
 /* Set filtering (where) expressions */
@@ -47,13 +49,13 @@ create table tmp_var as
 	select &groupby_vars., &vname
 from &dname
 &where_expr
-order by &vname;
+order by &groupby_vars., &vname;
 quit;
 
 /* 100분위 */
 proc rank data=work.tmp_var groups=100 out=tmp ties=low;
 	var &vname;
-	by STD_YYYY &subregunit;
+	by &data_by_vars;
 	ranks rnk;
 run;
 
@@ -155,7 +157,7 @@ quit;
 run;
 
 proc export data=out.&savename
-	/* CHANGE OUTFILE PATH */
+	/* CHANGE OUTFILE PATH !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 	outfile="/userdata07/room285/data_out/output-quantiles/quantiles.xlsx"
 	DBMS=xlsx
 	replace;
@@ -168,7 +170,8 @@ run;
 /*%compute_quantiles(SEOUL, adult, vnames=inc_tot, adult_age=20, year_lb=2006, year_ub=2018);*/
 /*%compute_quantiles(SEOUL, adult, vnames=inc_wage inc_bus, adult_age=20, earner=1, year_lb=2006, year_ub=2018);*/
 
+/*%compute_quantiles(SEOUL, adult, vnames=inc_fin, adult_age=20, earner=0, year_lb=2008, year_ub=2018);*/
+/*%compute_quantiles(SEOUL, earner, vnames=inc_fin, year_lb=2008, year_ub=2018);*/
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
-
-%compute_quantiles(SEOUL, adult, vnames=inc_tot prop_txbs_tot, adult_age=20, subregunit=sigungu, earner=0, year_lb=2006, year_ub=2018);
-%compute_quantiles(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd propt_txbs_bldg, adult_age=20, subregunit=sigungu, earner=1, year_lb=2006, year_ub=2018);
+%compute_quantiles(seoul, capita, vnames=inc_tot, year_lb=2018, year_ub=2018);
+%compute_quantiles(seoul, eq2, vnames=inc_tot, year_lb=2018, year_ub=2018);

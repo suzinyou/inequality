@@ -56,13 +56,20 @@ libname STORE '/userdata07/room285/data_out/data_store';
 
 /* For DATA step, make a space separated list of groupby variables (without commas) */
 %let groupby_vars_sas=%sysfunc(tranwrd(%quote(&groupby_vars),%str(,),%str()));
+%let keep_vars=&groupby_vars_sas &vname;
+/*%let last_index=%sysfunc(substr(right(&indices),8));*/
+/*%if &last_index=rpr_old %then %do;*/
+/*	%let keep_vars=&keep_vars indi_age;*/
+/*%end;*/
 %let sorted=0;
 
 /* FILTER VARIABLE */
 data work.tmp;
 set &dname(where=(&where_conditions));
-keep &groupby_vars_sas &vname;
+keep &keep_vars;
 run;
+
+%let columns=var,STD_YYYY;
 
 %do i=1 %to %sysfunc(countw(&indices));
 	%let index=%scan(&indices,&i);
@@ -169,44 +176,32 @@ run;
 		on &groupby_join_on;
 		quit;
 		%end;
-	%else %if &index=rpr %then %do;
+	%else %if &index=rpr or &index=rpr_old %then %do;
 		/*3. Relative poverty rate------------------------------------*/
-/*		%let median_exists=%sysfunc(exist(MMS.&savename));*/
-/*		%if &median_exists=1 %then %do;*/
-/*			proc sql;*/
-/*			create table work.tmp_median as*/
-/*			select &groupby_vars*/
-/*				, median*/
-/*			from MMS.&savename*/
-/*			where var="&vname";*/
-/*			quit;*/
-/*			proc sql;*/
-/*			select nobs > 0 into :median_exists*/
-/*			from sashelp.vtable*/
-/*			where libname="WORK" and memname="TMP_MEDIAN";*/
-/*			quit;*/
-/*			%end;*/
-/*		%if &median_exists eq 0 %then %do;*/
-			proc sql;
-			create table tmp_median as
-			select &groupby_vars
-				, median(&vname) as median
-			from tmp
-			group by &groupby_vars.;
-			quit;
-/*			%end;*/
+		proc sql;
+		create table tmp_median as
+		select &groupby_vars
+			, median(&vname) as median
+		from tmp
+		group by &groupby_vars.;
+		quit;
 
+		%let where_expr=&vname <= median / 2;
+		%if &index=rpr_old %then %do;
+			%let where_expr=&where_expr and indi_age >= 65;
+			%end;
+		
 		proc sql;
 		create table tmp_rpr as
 		select &groupby_join_vars
-			, count(*) / max(a.N) as rpr
+			, min(count(*) / max(a.N), 0.5) as rpr
 		from (
 			select a.*, b.median
 			from tmp as a
 			left join tmp_median as b
 			on &groupby_join_on
 		)
-		where &vname <= median / 2
+		where &where_expr
 		group by &groupby_vars.;
 		quit;
 		%end;
@@ -230,11 +225,13 @@ run;
 		from work.tmp_&index as a;
 		quit;
 		%end;
+
+	%let columns=&columns.,&index;
 %end;
 
 /*5. Insert results into results table-----------------------*/
 proc sql;
-insert into out.&savename
+insert into out.&savename (&columns)
 select * from work.&savename.;
 quit;
 
@@ -334,6 +331,15 @@ run;
 /*	earner=1, */
 /*	adult_age=20, */
 /*	year_lb=2006, year_ub=2018);*/
+/*%compute_indices(*/
+/*	region=kr, */
+/*	unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr, */
+/*	subregunit='', */
+/*	earner=1, */
+/*	adult_age=20, */
+/*	year_lb=2006, year_ub=2018);*/
 
 /* 서울 20세 이상 (총재산과표) ---------------------------------------*/
 /*%compute_indices(*/
@@ -362,6 +368,11 @@ run;
 /*	vnames=inc_wage inc_bus prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, */
 /*	indices=gini iqsr rpr, */
 /*	subregunit='', earner=1, adult_age=20, year_lb=2014, year_ub=2018);*/
+/*%compute_indices(*/
+/*	region=seoul, unit=adult, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr, */
+/*	subregunit='', earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
 
 /* 25개구별 20세 이상 (총소득, 총재산세과표) --------------------------*/
 /*%compute_indices(*/
@@ -420,3 +431,26 @@ run;
 /*	subregunit='', earner=0, adult_age=15, year_lb=2014, year_ub=2018);*/
 
 /*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/
+%compute_indices(
+	region=kr, 
+	unit=eq1, 
+	vnames=inc_tot, 
+	indices=gini iqsr rpr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);
+
+%compute_indices(
+	region=seoul, 
+	unit=eq1, 
+	vnames=inc_tot, 
+	indices=gini iqsr rpr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);
+
+%compute_indices(
+	region=seoul, 
+	unit=eq2, 
+	vnames=inc_tot, 
+	indices=gini iqsr rpr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);

@@ -5,6 +5,7 @@ import pandas as pd
 
 import plotly.io as pio
 from src.visualization.visualize import plot_lines, save_lorenz_curve
+from src.data.utils import load_cpi
 from src.env import project_dir, data_dir
 from src.dictionary import translate, region2ko, unit2ko
 
@@ -60,38 +61,61 @@ def preprocess_quantiles(_df):
 #     return gini_df
 
 
-def get_income_share_summary(df_centile):
+def get_income_share_summary(df_centile, k):
     """
     :param df_centile: pd.DataFrame
         preprocessed {region}_{unit}_centile.csv !! (rank is 1~100)
-    :param df_toppct: pd.DataFrame
-        preprocessed {region}_{unit}_top1p_1000tile.csv !!
+    :param k: str
+        key
     """
-    masks = {
-        'Bottom 20%': df_centile['rank'] < 20,
-        'Next 30%': (df_centile['rank'] >= 30) & (df_centile['rank'] < 50),
-        'Bottom 50%': df_centile['rank'] < 50,
-        'Middle 40%': (df_centile['rank'] >= 50) & (df_centile['rank'] < 90),
-        'Top 10%': df_centile['rank'] >= 90,
-        'Top 1%': df_centile['rank'] == 100,
+    centile_range = {
+        '하위 20%': (0, 20),
+        '다음 30%': (20, 50),
+        '하위 50%': (0, 50),
+        '중위 40%': (50, 90),
+        '상위 20%': (80, 100),
+        '상위 10%': (90, 100),
+        '상위 1%': (99, 100),
     }
     results = list()
 
     groupcols = ['std_yyyy', 'var']
-    cols = groupcols + ['share']
+    yearly_count = df_centile.groupby(['var', 'std_yyyy']).max()['year_count']
 
-    for name, m in masks.items():
-        shares = df_centile.loc[m, cols].groupby(groupcols).sum().reset_index()
+    for name, r in centile_range.items():
+        mask = (df_centile['rank'] > r[0]) & (df_centile['rank'] <= r[1])
 
-        shares.loc[:, 'income_group'] = name
-        results.append(shares)
+        max_freq = ((r[1] - r[0]) * yearly_count / 100).apply(lambda x: int(np.around(x)))
+        if mask.sum() == 0:
+            _df = yearly_count.reset_index().drop(columns=['year_count'])
+            _df = _df.merge(max_freq.rename('freq').reset_index())
+            _df['share'] = 0
+            _df['group_mean'] = 0
+        else:
+            _df = df_centile[mask].copy()
 
-    return pd.concat(results, axis=0)[['var', 'std_yyyy', 'income_group', 'share']].sort_values(by=['std_yyyy', 'var'])
+            _df = _df.drop(columns=['freq']).merge(max_freq.reset_index().rename(
+                columns={'year_count': 'freq'}), on=['std_yyyy', 'var'])
+            _df = _df.groupby(groupcols).agg({'rank_sum': 'sum', 'freq': 'max', 'share': 'sum'}).reset_index()
+            _df['group_mean'] = _df['rank_sum'] / _df['freq']
+            _df = _df.drop(columns=['rank_sum'])
+
+        _df.loc[:, 'income_group'] = name
+        results.append(_df)
+
+    df = pd.concat(results, axis=0).sort_values(by=['std_yyyy', 'var'])
+    df = df.pivot(index=['var', 'std_yyyy'], columns=['income_group'], values=['freq', 'group_mean', 'share']).reset_index()
+    sorted_groups = ['하위 20%', '다음 30%', '하위 50%', '중위 40%', '상위 20%', '상위 10%', '상위 1%']
+    df = df[[('var', ''), ('std_yyyy', '')] +
+            [('freq', k) for k in sorted_groups] +
+            [('group_mean', k) for k in sorted_groups] +
+            [('share', k) for k in sorted_groups]]
+    return df
 
 
 if __name__ == "__main__":
 
-    qts = pd.read_excel(data_dir / '03_quantiles' / 'quantiles.xlsx', sheet_name=None)
+    qts = pd.read_excel(data_dir / '03_quantiles' / 'quantiles-inc_fin.xlsx', sheet_name=None)
     qts_processed = dict()
     shares = dict()
     for k, df in qts.items():
@@ -100,16 +124,16 @@ if __name__ == "__main__":
         df_processed = preprocess_quantiles(df)
         qts_processed[k] = df_processed
 
-        res = get_income_share_summary(df_processed)
+        res = get_income_share_summary(df_processed, k)
         shares[k] = res
 
-    with pd.ExcelWriter(data_dir / '03_quantiles' / 'quantiles_with_cumshares.xlsx') as writer:
+    with pd.ExcelWriter(data_dir / '03_quantiles' / 'quantiles_with_cumshares-inc_fin.xlsx') as writer:
         for k, df in qts_processed.items():
             df.to_excel(writer, index=False, sheet_name=k.lower())
 
-    with pd.ExcelWriter(data_dir / '03_quantiles' / 'income_shares.xlsx') as writer:
+    with pd.ExcelWriter(data_dir / '03_quantiles' / 'income_shares-inc_fin.xlsx') as writer:
         for k, df in shares.items():
-            df.to_excel(writer, index=False, sheet_name=k.lower())
+            df.to_excel(writer, index=True, sheet_name=k.lower())
 
             # res.to_csv(data_dir / '03_quantiles' / f"{region}_{unit}_income_share.csv", index=False)
 

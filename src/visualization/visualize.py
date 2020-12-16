@@ -17,7 +17,7 @@ def plot_lines(df, y, title, save_name):
                   title=title,
                   width=50 * 12, height=50 * 8)
     fig.update_traces(line=dict(width=2.4))
-    fig.update_layout(margin={"r": 16, "t": 72, "l": 16, "b": 16})
+    fig.update_layout(margin={"r": 16, "t": 60, "l": 16, "b": 16})
     fig.write_image(project_dir / "reports" / "figures" / save_name)
 
 
@@ -38,7 +38,7 @@ def save_lorenz_curve(df, unit, year, var):
                             text=f'{year}년 서울 {translate(var)} Lorenz Curve (~100분위, Gini={gini:.3f})'
                         ),
                         height=700, width=840))
-    fig.write_image(f"../reports/figures/lorenz_curve_approx_{unit}-{year}-{var}.png")
+    fig.write_image(project_dir / 'reports' / 'figures' / f"lorenz_curve_approx_{unit}-{year}-{var}.png")
 
 
 def save_dist_chart(df, var):
@@ -52,8 +52,61 @@ def save_dist_chart(df, var):
                  width=100 * 12, height=100 * 8)
     # fig.update_traces(line=dict(width=2.4))
     fig.update_layout(
-        margin={"r": 16, "t": 72, "l": 16, "b": 16})
+        margin={"r": 16, "t": 60, "l": 16, "b": 16})
     fig.write_image(f"../reports/figures/agegroup-{var}.png")
+
+
+def plot_shares_stacked(df, key, var):
+    """ income_shares.xlsx """
+    colors = px.colors.qualitative.Plotly
+    pastels = px.colors.qualitative.Pastel1
+    color_discrete_map = {
+        'Bottom 50%': colors[0],
+        'Middle 40%': colors[2],
+        'Top 10%': colors[1],
+        'Bottom 20%': pastels[1],
+        'Top 1%': pastels[0]
+    }
+
+    fig = px.bar(
+        df[(df['var'] == var) & (df['income_group'].apply(lambda x: x in ['Bottom 50%', 'Middle 40%', 'Top 10%']))],
+        x="std_yyyy", y="share", color="income_group",
+        title=f"{translate(key)} {translate(var)} 점유율",
+        color_discrete_map=color_discrete_map,
+        width=50 * 12, height=50 * 8
+    )
+
+    bottom20 = df[(df['var'] == var) & (df['income_group'] == 'Bottom 20%')]
+    fig.add_trace(go.Scatter(x=bottom20.std_yyyy, y=bottom20.share,
+                             mode='lines+markers',
+                             name='Bottom 20%',
+                             line=dict(color=pastels[1]),
+                             marker=dict(color=pastels[1])))
+
+    top1 = df[(df['var'] == var) & (df['income_group'] == 'Top 1%')].copy()
+    top1['share'] = 1 - top1['share']
+    fig.add_trace(go.Scatter(x=top1.std_yyyy, y=top1.share,
+                             mode='lines+markers',
+                             name='Top 1%',
+                             line=dict(color=pastels[0]),
+                             marker=dict(color=pastels[0])))
+    path_obj = project_dir / 'reports' / 'figures' / f"share_stacked_{key}-{var}.png"
+    fig.write_image(str(path_obj))
+    return fig
+
+
+def plot_shares_line(df, key, var):
+    """ income_shares.xlsx """
+    df_filtered = df[df['var'] == var]
+    fig = px.line(df_filtered, x="std_yyyy", y="share", color='income_group', line_dash='income_group',
+                  title=f"{translate(key)} {translate(var)} 점유율",
+                  facet_col='var',
+                  width=50 * 12, height=50 * 12)
+    fig.update_traces(line=dict(width=2.4), mode='lines+markers')
+    fig.update_layout(margin={"r": 16, "t": 60, "l": 16, "b": 16})
+    path_obj = project_dir / 'reports' / 'figures' / f"share_line_{key}-{var}.png"
+    fig.write_image(str(path_obj))
+    return fig
 
 
 if __name__ == "__main__":

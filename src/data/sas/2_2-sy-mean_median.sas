@@ -5,30 +5,35 @@ libname OUT '/userdata07/room285/data_out/output-mean_median';
 libname STORE '/userdata07/room285/data_out/data_store';
 
 %macro make_dataset_popcnt(
-	region /* KR or SEOUL or ~PANEL */, 
+	region /* KR or SEOUL or ~PANEL */,
+	suffix /* _HH1, _HH2, etc*/,
 	subregunit /* subregion unit: "sido" or "sigungu" */
 );
+%if %sysevalf(%superq(suffix)=,boolean) or &suffix=_smpl %then %do;
+	%let select=count(*) as num_indi;
+	%end;
+%else %do;
+	%let select=count(*) as num_hh, sum(hh_size) as num_indi;
+	%end;
+
 /* Make population count table */
 /* (to compute fraction of earners/adults) */
-
 proc sql;
-	create table store.popcnt_&region as
+	create table store.popcnt_&region.&suffix as
 	select STD_YYYY
 		, "&region" as region
-		, count(*) as num_indi
-		, count(distinct(HHRR_HEAD_INDI_DSCM_NO)) as num_hh
-	from store.&region
+		, &select
+	from store.&region.&suffix
 	group by STD_YYYY;
 quit;
 
 proc sql;
-	create table store.popcnt_&region._&subregunit as
+	create table store.popcnt_&region.&suffix._&subregunit as
 	select STD_YYYY
 		, "&region" as region
 		, &subregunit
-		, count(*) as num_indi
-		, count(distinct(HHRR_HEAD_INDI_DSCM_NO)) as num_hh
-	from store.&region
+		, &select
+	from store.&region.&suffix
 	group by STD_YYYY, &subregunit;
 quit;
 %mend make_dataset_popcnt;
@@ -37,22 +42,27 @@ quit;
 /* Compute mean and median of given variable accoridng to given unit */
 %local dname;
 
-%if &unit=hh or &unit=eq %then %do;
-	%let dname=store.&region._&unit;
+/* Set base dataset name */
+%let unit_prefix=%sysfunc(substr(&unit,1,2));
+%if "&unit_prefix"="hh" or "&unit_prefix"="eq" %then %do;
+	%let dname=&region._&unit;
 	%end;
 %else %do;
-	%let dname=store.&region;
+	%let dname=&region;
 	%end;
 
-/* If sub-region unit is specified */
+/* Select appropriate population count reference */
 %if &subregunit~='' %then %do;
 	%let groupby_vars=STD_YYYY, &subregunit;
-	%let popcnt_dname=store.popcnt_&region._&subregunit;
+	%let popcnt_dname=store.popcnt_&dname._&subregunit;
 	%let popcnt_join_on=a.STD_YYYY=b.STD_YYYY and a.&subregunit.=b.&subregunit;
 	%end;
 %else %do;
 	%let groupby_vars=STD_YYYY;
-	%let popcnt_dname=store.popcnt_&region;
+	%let popcnt_dname=store.popcnt_&dname;
+	%if &unit_prefix=eq %then %do;
+		%let popcnt_dname=%sysfunc(tranwrd(store.popcnt_&dname,eq,hh));
+		%end;
 	%let popcnt_join_on=a.STD_YYYY=b.STD_YYYY;
 	%end;
 
@@ -68,17 +78,18 @@ quit;
 	%let where_expr=&where_expr. and &var > 0;
 	%end;
 
-%if &unit=hh or &unit=hh2 or &unit=eq %then %do;
+%if &unit_prefix=hh or &unit_prefix=eq %then %do;
 	proc sql;
 	create table &savename as
 	select "&var" as var length=32
 		, a.*
-		, b.num_hh as num_hh
+		, b.num_hh
+		, b.num_indi
 	from (
 		select &groupby_vars
 			, mean(&var) as mean
 			, median(&var) as median
-		from &dname
+		from store.&dname
 			&where_expr
 			group by &groupby_vars) as a
 	left join &popcnt_dname as b
@@ -90,14 +101,14 @@ quit;
 	create table &savename as
 	select "&var" as var length=32
 		, a.*
-		, b.num_indi as num_indi
+		, b.num_indi
 		, a.count / b.num_indi as frac_earners
 	from (
 		select &groupby_vars
 			, count(&var) as count
 			, mean(&var) as mean
 			, median(&var) as median
-		from &dname
+		from store.&dname
 			&where_expr
 			group by &groupby_vars) as a
 	left join &popcnt_dname as b
@@ -220,10 +231,18 @@ proc export data=out.&savename
 run;
 %mend;
 
-/* TO DO: recalculate seoul_smpl after sampling based on HHs -------*/
-/*%make_dataset_popcnt(seoul_smpl, sigungu);*/
-/*%make_dataset_popcnt(seoul, sigungu);*/
-/*%make_dataset_popcnt(kr, sido);*/
+/**/
+/*%make_dataset_popcnt(seoul,_smpl,sigungu);*/
+/*%make_dataset_popcnt(seoul,,sigungu);*/
+/*%make_dataset_popcnt(kr,,sido);*/
+/**/
+
+%make_dataset_popcnt(seoul,_eq1,sigungu);
+/*%make_dataset_popcnt(kr,_hh1,sido);*/
+%make_dataset_popcnt(seoul,_eq2,sigungu);
+/* TODO: re do potentially, after adjusting max hh_size !!!!!!!!!!!!!!!!!!!! */
+
+/*--------------------------RUN COMPLETE FROM HERE-------------------------------*/
 
 /*%compute_mean_median(KR, adult, vnames=inc_tot, adult_age=20);*/
 /*%compute_mean_median(KR, adult, vnames=inc_tot, adult_age=15);*/
@@ -238,12 +257,6 @@ run;
 /*%compute_mean_median(SEOUL_SMPL, earner, vnames=inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
 /*%compute_mean_median(SEOUL_SMPL, adult, vnames=inc_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);*/
 
-/*%compute_mean_median(KR, hh, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn);*/
-/*%compute_mean_median(SEOUL, hh, subregunit=sigungu, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
-/*%compute_mean_median(SEOUL, hh, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
-/*%compute_mean_median(KR, eq, vnames=inc_tot);*/
-/*%compute_mean_median(SEOUL, eq, vnames=inc_tot);*/
-
 /*%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=20, year_lb=2006, year_ub=2018);*/
 /*%compute_mean_median(SEOUL, adult, vnames=inc_tot, adult_age=15, year_lb=2006, year_ub=2018);*/
 /*%compute_mean_median(SEOUL, adult, vnames=inc_wage inc_bus, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
@@ -253,14 +266,34 @@ run;
 
 /*%compute_age_group_income(kr);*/
 
+/*%compute_mean_median(KR, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(KR, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+
+/* 201214 추가: 총소득을 성인 소득자 기준으로! + 25개구별 근로소득, 사업소득도 확인 */
+/*%compute_mean_median(KR, adult, vnames=inc_tot, earner=1, adult_age=20);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_tot, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_tot inc_wage inc_bus, subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
 
-%compute_mean_median(KR, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);
-%compute_mean_median(KR, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
+/* Run following after determining hh_size maximum */
 
-%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, adult_age=20, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
+/*%compute_mean_median(KR, hh1, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn);*/
+/**/
+/*%compute_mean_median(SEOUL, hh1, subregunit=sigungu, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, hh1, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_mean_median(SEOUL, hh22, subregunit=sigungu, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, hh22, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(KR, eq, vnames=inc_tot);*/
+/*%compute_mean_median(SEOUL, eq1smpl, vnames=inc_tot);*/
+/*%compute_mean_median(SEOUL, eq22smpl, vnames=inc_tot);*/
 
-%compute_mean_median(SEOUL, adult, vnames=prop_txbs_tot, subregunit=sigungu, adult_age=20, year_lb=2006, year_ub=2018);
-%compute_mean_median(SEOUL, adult, vnames=prop_txbs_hs prop_txbs_lnd prop_txbs_bldg, subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2018);
-
+%compute_mean_median(seoul, eq2, vnames=inc_tot, year_lb=2006, year_ub=2018);
+%compute_mean_median(seoul, eq1, vnames=inc_tot, year_lb=2006, year_ub=2018);
