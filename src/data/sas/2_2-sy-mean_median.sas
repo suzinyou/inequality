@@ -60,10 +60,11 @@ quit;
 %else %do;
 	%let groupby_vars=STD_YYYY;
 	%let popcnt_dname=store.popcnt_&dname;
-	%if &unit_prefix=eq %then %do;
-		%let popcnt_dname=%sysfunc(tranwrd(store.popcnt_&dname,eq,hh));
-		%end;
 	%let popcnt_join_on=a.STD_YYYY=b.STD_YYYY;
+	%end;
+
+%if "&unit_prefix"="eq" %then %do;
+	%let popcnt_dname=%sysfunc(tranwrd(&popcnt_dname,eq,hh));
 	%end;
 
 /* Set filtering (where) expressions */
@@ -78,23 +79,33 @@ quit;
 	%let where_expr=&where_expr. and &var > 0;
 	%end;
 
-%if &unit_prefix=hh or &unit_prefix=eq %then %do;
+%if "&unit_prefix"="hh" or "&unit_prefix"="eq" %then %do;
 	proc sql;
 	create table &savename as
-	select "&var" as var length=32
-		, a.*
-		, b.num_hh
-		, b.num_indi
-	from (
-		select &groupby_vars
-			, mean(&var) as mean
-			, median(&var) as median
-		from store.&dname
-			&where_expr
-			group by &groupby_vars) as a
-	left join &popcnt_dname as b
-	on &popcnt_join_on;
+	select &groupby_vars
+		, mean(&var) as mean
+		, median(&var) as median
+		, count(*) as count
+	from store.&dname
+		&where_expr
+		group by &groupby_vars;
 	quit;
+/*	proc sql;*/
+/*	create table &savename as*/
+/*	select "&var" as var length=32*/
+/*		, a.**/
+/*		, b.num_hh*/
+/*		, b.num_indi*/
+/*	from (*/
+/*		select &groupby_vars*/
+/*			, mean(&var) as mean*/
+/*			, median(&var) as median*/
+/*		from store.&dname*/
+/*			&where_expr*/
+/*			group by &groupby_vars) as a*/
+/*	left join &popcnt_dname as b*/
+/*	on &popcnt_join_on;*/
+/*	quit;*/
 	%end;
 %else %do;
 	proc sql;
@@ -237,10 +248,10 @@ run;
 /*%make_dataset_popcnt(kr,,sido);*/
 /**/
 
-%make_dataset_popcnt(seoul,_eq1,sigungu);
+/* We don't actually need these: */
 /*%make_dataset_popcnt(kr,_hh1,sido);*/
-%make_dataset_popcnt(seoul,_eq2,sigungu);
-/* TODO: re do potentially, after adjusting max hh_size !!!!!!!!!!!!!!!!!!!! */
+/*%make_dataset_popcnt(seoul,_hh1,sigungu);*/
+/*%make_dataset_popcnt(seoul,_hh2,sigungu);*/
 
 /*--------------------------RUN COMPLETE FROM HERE-------------------------------*/
 
@@ -280,20 +291,9 @@ run;
 /*%compute_mean_median(SEOUL, adult, vnames=inc_tot, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
 /*%compute_mean_median(SEOUL, adult, vnames=inc_tot inc_wage inc_bus, subregunit=sigungu, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
 
+/* EQUIVALIZED HOusEHOLD iNCOME */
+/*%compute_mean_median(seoul, eq2, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(seoul, eq1, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
+
+/*%compute_mean_median(KR, eq1, vnames=inc_tot, subregunit=sido, year_lb=2006, year_ub=2018);*/
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
-
-/* Run following after determining hh_size maximum */
-
-/*%compute_mean_median(KR, hh1, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn);*/
-/**/
-/*%compute_mean_median(SEOUL, hh1, subregunit=sigungu, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
-/*%compute_mean_median(SEOUL, hh1, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
-/**/
-/*%compute_mean_median(SEOUL, hh22, subregunit=sigungu, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
-/*%compute_mean_median(SEOUL, hh22, vnames=inc_tot inc_wage inc_bus inc_fin inc_othr inc_pnsn, year_lb=2006, year_ub=2018);*/
-/*%compute_mean_median(KR, eq, vnames=inc_tot);*/
-/*%compute_mean_median(SEOUL, eq1smpl, vnames=inc_tot);*/
-/*%compute_mean_median(SEOUL, eq22smpl, vnames=inc_tot);*/
-
-%compute_mean_median(seoul, eq2, vnames=inc_tot, year_lb=2006, year_ub=2018);
-%compute_mean_median(seoul, eq1, vnames=inc_tot, year_lb=2006, year_ub=2018);

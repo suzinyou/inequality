@@ -12,7 +12,7 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	year_lb, year_ub,
 	subreg=''
 );
-%local dname where_conditions groupby_vars groupby_vars_sas groupby_join_on groupby_join_vars;
+%local dname where_conditions groupby_vars groupby_vars_sas groupby_join_on groupby_join_vars unit_prefix;
 %local median_exists;
 
 	/* Uncomment to debug */
@@ -26,7 +26,8 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	/*%let subregunit=sigungu;*/
 	/*%let savename=woohoo;*/
 
-%if &unit=hh or &unit=eq %then %do;
+%let unit_prefix=%sysfunc(substr(&unit,1,2));
+%if "&unit_prefix"="hh" or "&unit_prefix"="eq" %then %do;
 	%let dname=store.&region._&unit;
 	%end;
 %else %do;
@@ -48,10 +49,12 @@ libname STORE '/userdata07/room285/data_out/data_store';
 %let groupby_vars=STD_YYYY;
 %let groupby_join_on=a.STD_YYYY=b.STD_YYYY;
 %let groupby_join_vars=a.STD_YYYY;
+%let columns=var,STD_YYYY;
 %if &subregunit~='' %then %do;
 	%let groupby_vars=&groupby_vars., &subregunit.;
 	%let groupby_join_on=&groupby_join_on. and a.&subregunit.=b.&subregunit;
 	%let groupby_join_vars=&groupby_join_vars., a.&subregunit;
+	%let columns=&columns.,sigungu;
 	%end;
 
 /* For DATA step, make a space separated list of groupby variables (without commas) */
@@ -68,8 +71,6 @@ data work.tmp;
 set &dname(where=(&where_conditions));
 keep &keep_vars;
 run;
-
-%let columns=var,STD_YYYY;
 
 %do i=1 %to %sysfunc(countw(&indices));
 	%let index=%scan(&indices,&i);
@@ -176,7 +177,7 @@ run;
 		on &groupby_join_on;
 		quit;
 		%end;
-	%else %if &index=rpr or &index=rpr_old %then %do;
+	%else %if &index=rpr %then %do;
 		/*3. Relative poverty rate------------------------------------*/
 		proc sql;
 		create table tmp_median as
@@ -187,9 +188,6 @@ run;
 		quit;
 
 		%let where_expr=&vname <= median / 2;
-		%if &index=rpr_old %then %do;
-			%let where_expr=&where_expr and indi_age >= 65;
-			%end;
 		
 		proc sql;
 		create table tmp_rpr as
@@ -430,27 +428,115 @@ run;
 /*	indices=gini iqsr rpr, */
 /*	subregunit='', earner=0, adult_age=15, year_lb=2014, year_ub=2018);*/
 
+/*%compute_indices(*/
+/*	region=kr, */
+/*	unit=eq1, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit='',*/
+/*	year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_indices(*/
+/*	region=seoul, */
+/*	unit=eq1, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit='',*/
+/*	year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_indices(*/
+/*	region=seoul, */
+/*	unit=eq2, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit='',*/
+/*	year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_indices(*/
+/*	region=seoul, */
+/*	unit=capita, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit='',*/
+/*	year_lb=2006, year_ub=2018);*/
+
+
+/*%compute_indices(*/
+/*	region=seoul, */
+/*	unit=eq2, */
+/*	vnames=inc_tot, */
+/*	indices=gini iqsr rpr,*/
+/*	subregunit=sigungu,*/
+/*	year_lb=2006, year_ub=2018);*/
 /*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/
-%compute_indices(
-	region=kr, 
-	unit=eq1, 
-	vnames=inc_tot, 
-	indices=gini iqsr rpr,
-	subregunit='',
-	year_lb=2006, year_ub=2018);
 
-%compute_indices(
-	region=seoul, 
-	unit=eq1, 
-	vnames=inc_tot, 
-	indices=gini iqsr rpr,
-	subregunit='',
-	year_lb=2006, year_ub=2018);
 
-%compute_indices(
-	region=seoul, 
-	unit=eq2, 
-	vnames=inc_tot, 
-	indices=gini iqsr rpr,
-	subregunit='',
-	year_lb=2006, year_ub=2018);
+%macro poverty_rate_filter(i, dname, vname, filter);
+%if &filter=old %then %do;
+	%let where_expr=a.indi_age >= 65;
+	%end;
+%else %if &filter=single %then %do;
+	%let where_expr=a.hh_size=1;
+	%end;
+%else %if &filter=multi %then %do;
+	%let where_expr=a.hh_size>=2;
+	%end;
+
+proc sql;
+create table tmp_rpr_&i as
+select "&filter" as filter length=16
+	, "&vname" as var length=16
+	, a.STD_YYYY
+	, sum(case 
+		when a.&vname <= b.median / 2 then 1 
+		else 0 end) / count(*) as rpr
+	as rpr
+from store.&dname as a
+inner join tmp_median as b
+on a.STD_YYYY=b.STD_YYYY
+where &where_expr
+group by a.STD_YYYY;
+quit;
+%mend poverty_rate_filter;
+
+%macro poverty_rate(region, unit, filters, year_lb, year_ub);
+%let dname=&region._&unit;
+%let savename=poverty_group_&dname; 
+/*TODO: savename is it ok? */
+
+%let where_conditions=(input(STD_YYYY, 4.)>=&year_lb and input(STD_YYYY, 4.)<=&year_ub);
+proc sql;
+	create table tmp_median as
+	select STD_YYYY
+		, median(inc_tot) as median
+	from store.&dname
+	where &where_conditions
+	group by STD_YYYY;
+quit;
+
+%do i=1 %to %sysfunc(countw(&filters));
+	%let filter=%scan(&filters,&i);
+	%poverty_rate_filter(&i, &dname, inc_tot, &filter);
+%end;
+
+data out.&savename;
+set work.tmp_rpr_:;
+
+/* DELETE TEMP DATASETS */
+/*proc datasets lib=work nolist kill;*/
+/*quit;*/
+/*run;*/
+
+proc export data=out.&savename
+	/* CHANGE OUTFILE PATH */
+	outfile="/userdata07/room285/data_out/output-indices/indices.xlsx"
+	DBMS=xlsx
+	replace;
+	sheet="&savename";
+run;
+
+%mend poverty_rate;
+
+%poverty_rate(kr, eq1, filters=old, year_lb=2006, year_ub=2018);
+%poverty_rate(seoul, eq1, filters=old, year_lb=2006, year_ub=2018);
+%poverty_rate(seoul, eq2, filters=old single multi, year_lb=2006, year_ub=2018);

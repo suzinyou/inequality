@@ -12,7 +12,7 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /* quit; */
 
 /* 취업 VS 미취업 인구와 비율 */
-%let savename=seoul_sigungu_adult15_working;
+%let savename=adult15_working;
 proc sql;
 create table out.&savename as
 select STD_YYYY
@@ -90,10 +90,10 @@ from store.SEOUL
 group by STD_YYYY, firm_sido;
 quit;
 
-/* Where do people with top 20% wage income work?*/
+/* Where do people with top 20% wage income live and work? ------------------------*/
 proc sql;
 create table tmp_wage as
-	select STD_YYYY, inc_wage
+	select STD_YYYY, sigungu, firm_sido, firm_sigungu, inc_wage
 from store.seoul
 where STD_YYYY in ("2006", "2010", "2014", "2018") and age >= 15 and inc_wage > 0
 order by STD_YYYY, inc_wage;
@@ -111,40 +111,100 @@ proc sql;
 create table out.&savename as
 	select STD_YYYY
 		, rnk as rank
-		, min(&vname) as rank_min
+		, min(inc_wage) as rank_min
+		, max(inc_wage) as rank_max
+		, sum(inc_wage) as rank_sum
+		, count(*) as freq
 	from tmp group by STD_YYYY, rnk;
 quit;
 run;
 
 proc sql;
+create table inc_wage_top20p as
 select STD_YYYY, rank_min 
 from out.&savename
-where rank = "8";
+where rank=8;
 quit;
 
 %let savename=adult15_wage_earner_top20p;
 proc sql;
-create table out.&savename as
-select STD_YYYY
-	, sigungu
-	, firm_sigungu
-	, sum(case when inc_wage >= &top20p_min then 1 else 0 end) as num_top20p_wage
-	, count(*) as num_indi
-	, count / num_indi as frac_top20p_wage
-from tmp
-group by STD_YYYY, sigungu, firm_sigungu
-where STD_YYYY in ("2006", "2010", "2014", "2018");
+create table tmp1 as
+select a.STD_YYYY
+	, a.sigungu
+	, count(*) as num_live
+	, sum(case when inc_wage >= b.rank_min then 1 else 0 end) as num_top20p_wage_live
+from tmp_wage as a
+left join inc_wage_top20p as b
+on a.STD_YYYY=b.STD_YYYY
+group by a.STD_YYYY, a.sigungu;
 quit;
 
-/* where are big businesses? */
 proc sql;
-create table out.seoul_big_firms as
+create table tmp2 as
+select a.STD_YYYY
+	, a.firm_sigungu as sigungu
+	, count(*) as num_work
+	, sum(case when inc_wage >= b.rank_min then 1 else 0 end) as num_top20p_wage_work
+from tmp_wage as a
+left join inc_wage_top20p as b
+on a.STD_YYYY=b.STD_YYYY
+where a.firm_sido="11"
+group by a.STD_YYYY, a.firm_sigungu;
+quit;
+
+proc sql;
+create table out.&savename as
+select b.STD_YYYY, b.sigungu, a.num_live, a.num_top20p_wage_live, b.num_work, b.num_top20p_wage_work
+from tmp2 as b
+left join tmp1 as a
+on a.STD_YYYY=b.STD_YYYY and a.sigungu=b.sigungu;
+quit;
+
+/* add fraction of ppl living/working in the gu*/
+proc sql;
+alter table out.&savename
+add frac_top20p_wage_work num
+	, frac_top20p_wage_live num;
+update out.&savename
+set frac_top20p_wage_work=num_top20p_wage_work / num_work
+	, frac_top20p_wage_live=num_top20p_wage_live / num_live;
+quit;
+
+proc export data=out.&savename
+	/* CHANGE OUTFILE PATH !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+	outfile="/userdata07/room285/data_out/output-work/work.xlsx"
+	DBMS=xlsx
+	replace;
+	sheet="&savename";
+run;
+
+/* Number of ppl working in bigger businesses */
+%let savename=big_firms;
+proc sql;
+create table out.&savename as
 select STD_YYYY
 	, firm_sigungu
-	, firm_SCL_ENTER_NOP_ID
-	, DISTINCT(FIRM_CD) as FIRM_CD
+	, sum(case when FIRM_SCL_ENTER_NOP_ID >= 100 then 1 else 0 end) as num_work_big
+	, count(*) as num_work
 from store.SEOUL
-group by STD_YYYY
-where STD_YYYY in ("2005", "2010", "2015", "2018")
-	and firm_SCL_ENTER_NOP_ID >= 100;
+where STD_YYYY in ("2006", "2010", "2016", "2018")
+	and age >= 15
+	and firm_sido="11"
+	and inc_wage + inc_bus > 0
+group by STD_YYYY, firm_sigungu;
 quit;
+
+proc sql;
+alter table out.&savename
+add frac_big num;
+update out.&savename
+set frac_big=num_work_big / num_work;
+quit;
+
+proc export data=out.&savename
+	/* CHANGE OUTFILE PATH !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+	outfile="/userdata07/room285/data_out/output-work/work.xlsx"
+	DBMS=xlsx
+	replace;
+	sheet="&savename";
+run;

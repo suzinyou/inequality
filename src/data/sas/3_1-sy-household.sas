@@ -78,10 +78,12 @@ run;
 %mend count_and_mean;
 
 /*%count_and_mean(kr, hh1, group_vars=hh_size_group,second_group=,year_lb=2018,year_ub=2018);*/
+/*%count_and_mean(kr, eq1, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
+
 /*%count_and_mean(seoul, hh1, group_vars=hh_size_group,second_group=,year_lb=2018,year_ub=2018);*/
 /*%count_and_mean(seoul, hh2, group_vars=hh_size_group,second_group=,year_lb=2018,year_ub=2018);*/
 /*%count_and_mean(seoul, eq1, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
-%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);
+/*%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
 
 /*%count_and_mean(seoul, hh2, group_vars=age_group,second_group=,hh_size_cond='1',year_lb=2006,year_ub=2018);*/
 /*%count_and_mean(seoul, hh2, group_vars=age_group,second_group=sex_type,hh_size_cond='1',earner=1,year_lb=2018,year_ub=2018);*/
@@ -208,4 +210,4 @@ proc export data=out.&savename
 	sheet="&savename";
 run;
 %mend;
-%mean_hh_size;
+/*%mean_hh_size;*/
