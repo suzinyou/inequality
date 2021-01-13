@@ -12,13 +12,12 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	%let where_expr=&where_expr. and hh_size=1;
 	%end;
 
-
 %if &group_var=working %then %do;
 	%let group_select=case when is_working_head=1 then "head" when is_working_head=. and is_working_any=1 then "dependent" else "none" end as group length=16;
 	%let groupby=STD_YYYY, group;
 	%end;
-%else %if &group_var=has_property %then %do;
-	%let group_select=case when prop_txbs_tot>0 then "유재산" else "무재산" end as group length=16;
+%else %if &group_var=has_house %then %do;
+	%let group_select=case when prop_txbs_hs>0 then "유주택" else "무주택" end as group length=16;
 	%let groupby=STD_YYYY, group;
 	%end;
 %else %do;
@@ -86,16 +85,10 @@ run;
 %mend count_and_mean;
 
 
-%count_and_mean(seoul, hh2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_property has_disability,year_lb=2018,year_ub=2018);
-%count_and_mean(seoul, hh2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);
-%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_property has_disability,year_lb=2018,year_ub=2018);
-%count_and_mean(seoul, eq2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);
-/*%count_and_mean(kr, eq1, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
+/*%count_and_mean(seoul, hh2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);*/
+/*%count_and_mean(seoul, hh2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);*/
+/*%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);*/
+/*%count_and_mean(seoul, eq2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);*/
+%count_and_mean(seoul, hh2, group_vars=has_house,year_lb=2018,year_ub=2018);
+%count_and_mean(seoul, eq2, group_vars=has_house,year_lb=2018,year_ub=2018);
 
-/*%count_and_mean(seoul, hh1, group_vars=hh_size_group,second_group=,year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, hh2, group_vars=hh_size_group,second_group=,year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, eq1, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group,second_group=,year_lb=2018,year_ub=2018);*/
-
-/*%count_and_mean(seoul, hh2, group_vars=age_group,second_group=,hh_size_cond='1',year_lb=2006,year_ub=2018);*/
-/*%count_and_mean(seoul, hh2, group_vars=age_group,second_group=sex_type,hh_size_cond='1',earner=1,year_lb=2018,year_ub=2018);*/

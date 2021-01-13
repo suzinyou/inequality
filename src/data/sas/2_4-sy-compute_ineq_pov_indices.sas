@@ -72,6 +72,29 @@ set &dname(where=(&where_conditions));
 keep &keep_vars;
 run;
 
+/* GET THE TOTAL(i.e. SUM) & count OF THE VARIABLE */
+proc sql;
+create table work.tmp2 as
+select &groupby_vars. 
+	, sum(&vname) as tot
+	, count(*) as N 
+from work.tmp
+group by &groupby_vars;
+quit;
+
+proc sql;
+alter table work.tmp
+add tot num
+	, N num;
+update work.tmp as a
+set tot=(select tot
+		from work.tmp2 as b
+		where &groupby_join_on)
+	, N=(select N
+		from work.tmp2 as b
+		where &groupby_join_on);
+quit;
+
 %do i=1 %to %sysfunc(countw(&indices));
 	%let index=%scan(&indices,&i);
 	%if &sorted=0 and (&index=gini or &index=iqsr) %then %do;
@@ -79,29 +102,6 @@ run;
 		proc sort data=work.tmp;
 		 by &groupby_vars_sas &vname;
 		run;
-
-		/* GET THE TOTAL(i.e. SUM) & count OF THE VARIABLE */
-		proc sql;
-		create table work.tmp2 as
-		select &groupby_vars. 
-			, sum(&vname) as tot
-			, count(*) as N 
-		from work.tmp
-		group by &groupby_vars;
-		quit;
-
-		proc sql;
-		alter table work.tmp
-		add tot num
-			, N num;
-		update work.tmp as a
-		set tot=(select tot
-				from work.tmp2 as b
-				where &groupby_join_on)
-			, N=(select N
-				from work.tmp2 as b
-				where &groupby_join_on);
-		quit;
 
 		/* COMPUTE INDEX AND CUMULATIVE SUMS */
 		%if &subregunit~='' %then %do;
@@ -181,10 +181,10 @@ run;
 		/*3. Relative poverty rate------------------------------------*/
 		proc sql;
 		create table tmp_median as
-		select &groupby_vars
+		select STD_YYYY
 			, median(&vname) as median
 		from tmp
-		group by &groupby_vars.;
+		group by STD_YYYY;
 		quit;
 
 		%let where_expr=&vname <= median / 2;
@@ -192,12 +192,12 @@ run;
 		proc sql;
 		create table tmp_rpr as
 		select &groupby_join_vars
-			, min(count(*) / max(a.N), 0.5) as rpr
+			, min(count(*) / max(N), 0.5) as rpr
 		from (
 			select a.*, b.median
 			from tmp as a
 			left join tmp_median as b
-			on &groupby_join_on
+			on a.STD_YYYY=b.STD_YYYY
 		)
 		where &where_expr
 		group by &groupby_vars.;
@@ -465,9 +465,17 @@ run;
 /*	region=seoul, */
 /*	unit=eq2, */
 /*	vnames=inc_tot, */
-/*	indices=gini iqsr rpr,*/
+/*	indices=gini iqsr,*/
 /*	subregunit=sigungu,*/
 /*	year_lb=2006, year_ub=2018);*/
+
+%compute_indices(
+	region=seoul, 
+	unit=eq2, 
+	vnames=inc_tot, 
+	indices=rpr,
+	subregunit=sigungu,
+	year_lb=2006, year_ub=2018);
 /*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/
 
 
@@ -523,9 +531,9 @@ data out.&savename;
 set work.tmp_rpr_:;
 
 /* DELETE TEMP DATASETS */
-/*proc datasets lib=work nolist kill;*/
-/*quit;*/
-/*run;*/
+proc datasets lib=work nolist kill;
+quit;
+run;
 
 proc export data=out.&savename
 	/* CHANGE OUTFILE PATH */
@@ -537,6 +545,6 @@ run;
 
 %mend poverty_rate;
 
-%poverty_rate(kr, eq1, filters=old, year_lb=2006, year_ub=2018);
-%poverty_rate(seoul, eq1, filters=old, year_lb=2006, year_ub=2018);
-%poverty_rate(seoul, eq2, filters=old single multi, year_lb=2006, year_ub=2018);
+/*%poverty_rate(kr, eq1, filters=old, year_lb=2006, year_ub=2018);*/
+/*%poverty_rate(seoul, eq1, filters=old, year_lb=2006, year_ub=2018);*/
+/*%poverty_rate(seoul, eq2, filters=old single multi, year_lb=2006, year_ub=2018);*/

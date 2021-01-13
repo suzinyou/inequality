@@ -237,7 +237,7 @@ proc export data=out.&savename
 	/* TODO: CHANGE OUTFILE PATH TO mean_median.xlsx? */
 	outfile="/userdata07/room285/data_out/output-mean_median/mean_median_agegroup.xlsx" 
 	DBMS=xlsx
-	append;
+	replace;
 	sheet="&savename";
 run;
 %mend;
@@ -296,4 +296,47 @@ run;
 /*%compute_mean_median(seoul, eq1, vnames=inc_tot, year_lb=2006, year_ub=2018);*/
 
 /*%compute_mean_median(KR, eq1, vnames=inc_tot, subregunit=sido, year_lb=2006, year_ub=2018);*/
+
+/* Individual inc_fin, inc_othr and 60+ inc_pnsn */
+/*%compute_mean_median(KR, adult, vnames=inc_fin inc_othr, earner=1, adult_age=20);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_fin inc_othr, earner=1, adult_age=20, year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_mean_median(KR, adult, vnames=inc_pnsn, earner=1, adult_age=60);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_pnsn, earner=1, adult_age=60, year_lb=2006, year_ub=2018);*/
+/**/
+/*%compute_mean_median(KR, adult, vnames=inc_pnsn, adult_age=60);*/
+/*%compute_mean_median(SEOUL, adult, vnames=inc_pnsn, adult_age=60, year_lb=2006, year_ub=2018);*/
+
+/*proc sql;*/
+/*create table tmp as*/
+/*select GAIBJA_TYPE*/
+/*	, count(*) as num_indi*/
+/*from store.seoul*/
+/*where STD_YYYY="2018"*/
+/*group by GAIBJA_TYPE;*/
+/*quit;*/
+/*proc sql;*/
+/*create table out.seoul_earner_2018_by_gaibja_type as*/
+/*select a.**/
+/*	, b.num_indi*/
+/*	, a.count/b.num_indi as frac_earners*/
+/*from (*/
+/*	select GAIBJA_TYPE*/
+/*		, count(*) as count*/
+/*		, mean(inc_tot) as mean_inc_tot*/
+/*		, median(inc_tot) as median_inc_tot*/
+/*	from store.seoul*/
+/*	where STD_YYYY="2018" and inc_tot > 0*/
+/*	group by GAIBJA_TYPE) as a*/
+/*left join tmp as b */
+/*on a.GAIBJA_TYPE=b.GAIBJA_TYPE;*/
+/*quit;*/
+
+/*proc export data=out.seoul_earner_2018_by_gaibja_type*/
+/*	/* TODO: CHANGE OUTFILE PATH TO mean_median.xlsx? */*/
+/*	outfile="/userdata07/room285/data_out/output-mean_median/mean_median.xlsx" */
+/*	DBMS=xlsx*/
+/*	replace;*/
+/*	sheet="seoul_earner_2018_gaibja_type";*/
+/*run;*/
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/

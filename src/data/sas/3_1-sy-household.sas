@@ -211,3 +211,40 @@ proc export data=out.&savename
 run;
 %mend;
 /*%mean_hh_size;*/
+
+/* 의료급여수급률 (개인) */
+%MACRO GAIBJA_TYPE_7_OR_8;
+%LET savename=gaibja_type_7_or_8_seoul_18;
+proc sql;
+create table out.&savename as
+select STD_YYYY
+	, sigungu
+	, sum(gaibja_type="7" or gaibja_type="8") as count
+	, count(*) as num_indi
+from store.SEOUL
+where input(STD_YYYY, 4.) between 2006 and 2018
+group by STD_YYYY, sigungu;
+quit;
+
+proc export data=out.&savename
+	outfile="/userdata07/room285/data_out/output-household/household.xlsx"
+	DBMS=xlsx
+	replace;
+	sheet="&savename";
+run;
+%MEND;
+
+/* 월평균 가구총소득 구간별 가구주 성별, 연령대, 가구원수*/
+%MACRO GET_GROUP_COUNT(i, GROUPBY_VAR);
+PROC SQL;
+CREATE TABLE tmp_&i AS
+SELECT MONTHLY_INC_TOT
+	, "&GROUPBY_VAR" AS GROUP_VAR length=16
+	, &GROUPBY_VAR AS GROUP	length=16
+	, COUNT(*) AS COUNT
+FROM TMP
+GROUP BY MONTHLY_INC_TOT, &GROUPBY_VAR;
+QUIT;
+%MEND;
+
+

@@ -12,17 +12,17 @@ libname STORE '/userdata07/room285/data_out/data_store';
 %if &region=seoul or &region=seoulpanel %then %do;
 	/* Compute sigungu and dong */
 	proc sql;
-		alter table STORE.&region
-	    	add inc_fin num
-				, inc_pnsn num
-				, inc_main num
-				, sido char(2)
-				, sigungu char(3)
-				, dong char(3)
-				, firm_sido char(2)
-				, firm_sigungu char(3)
-				, firm_dong char(3)
-				, age num;
+/*		alter table STORE.&region*/
+/*	    	add inc_fin num*/
+/*				, inc_pnsn num*/
+/*				, inc_main num*/
+/*				, sido char(2)*/
+/*				, sigungu char(3)*/
+/*				, dong char(3)*/
+/*				, firm_sido char(2)*/
+/*				, firm_sigungu char(3)*/
+/*				, firm_dong char(3)*/
+/*				, age num;*/
 			update STORE.&region
 			set inc_fin=inc_int + inc_divid
 				, inc_pnsn=inc_pnsn_natl + inc_pnsn_occup
@@ -39,13 +39,13 @@ libname STORE '/userdata07/room285/data_out/data_store';
 %end;
 %else %do;
 	proc sql;
-		alter table STORE.&region
-	    	add inc_fin num
-				, inc_pnsn num
-				, inc_main num
-				, sido char(2)
-				, firm_sido char(2)
-				, age num;
+/*		alter table STORE.&region*/
+/*	    	add inc_fin num*/
+/*				, inc_pnsn num*/
+/*				, inc_main num*/
+/*				, sido char(2)*/
+/*				, firm_sido char(2)*/
+/*				, age num;*/
 			update STORE.&region
 			set inc_fin=inc_int + inc_divid
 				, inc_pnsn=inc_pnsn_natl + inc_pnsn_occup
@@ -110,7 +110,7 @@ libname STORE '/userdata07/room285/data_out/data_store';
 %macro fillna(region);
 /* Fill null values with zero in income and property tax base variables */
 /* TAKES OVER AN HOUR for a single run!!!!! */
-%let vnames = inc_tot inc_wage inc_bus inc_othr inc_int inc_divid inc_fin inc_pnsn_natl inc_pnsn_occup inc_pnsn inc_main prop_txbs_tot prop_txbs_hs prop_txbs_lnd prop_txbs_bldg prop_txbs_ship;
+%let vnames = inc_tot inc_wage inc_bus inc_othr inc_int inc_divid inc_pnsn_natl inc_pnsn_occup prop_txbs_tot prop_txbs_hs prop_txbs_lnd prop_txbs_bldg prop_txbs_ship;
 %do i=1 %to %sysfunc(countw(&vnames));
 	%let vname = %scan(&vnames, &i);
 	proc sql;
@@ -121,19 +121,21 @@ libname STORE '/userdata07/room285/data_out/data_store';
 %mend;
 
 /* Korea sample (cross-section) ---------------------------------------------*/
-%union_kr;
-%generate_features(kr);
-%fillna(kr);
+/*%union_kr;*/
+/*%fillna(kr);*/
+/*%generate_features(kr);*/
 
 /* Korea sample (panel) -----------------------------------------------------*/
-%union_krpanel;
-%generate_features(krpanel);
-%fillna(krpanel);
+/*%union_krpanel;*/
+/*%fillna(krpanel);*/
+/*%generate_features(krpanel);*/
+/* TODO 201231 */
+
 
 /* Seoul (panel) ------------------------------------------------------------*/
-%union_seoulpanel;
+/*%union_seoulpanel;*/
+/*%fillna(seoulpanel);*/
 %generate_features(seoulpanel);
-%fillna(seoulpanel);
 
 /* Seoul (seoul only!) ------------------------------------------------------*/
 proc sql;
@@ -145,22 +147,12 @@ quit;
 
 
 /* Seoul 1% sample ---------------------------------------------*/
-proc surveyselect data=STORE.SEOUL
-	method=SRS
-	seed=170011
-	rate=0.01
-	out=store.SEOUL_SMPL;
-STRATA STD_YYYY;
-run;
+/*proc surveyselect data=STORE.SEOUL*/
+/*	method=SRS*/
+/*	seed=170011*/
+/*	rate=0.01*/
+/*	out=store.SEOUL_SMPL;*/
+/*STRATA STD_YYYY;*/
+/*run;*/
 
-/* TODO: sample based on household heads! */
-
-/* Seoul household 1% sample -----------------------------------*/
-proc surveyselect data=STORE.SEOUL_HH
-	method=SRS
-	seed=170011
-	rate=0.01
-	out=work.SEOUL_HH_SMPL;
-STRATA STD_YYYY;
-run;
 
