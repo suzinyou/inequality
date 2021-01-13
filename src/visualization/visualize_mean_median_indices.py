@@ -174,7 +174,7 @@ def plot_lines(_df, stat, color_col, key, var=None, var_prefix_filter=None, face
     #         annotations.append(dict(xref='paper', x=1.01, y=y_trace, xanchor='left', yanchor='middle', text=label, showarrow=False))
     #     fig.update_layout(annotations=annotations)
 
-    fig.write_image(str(project_dir / "reports" / "figures" / f"{title}.png"), scale=2)
+    fig.write_image(str(project_dir / "reports" / "figures" / f"{title}.png"), scale=3)
 
     return fig
 
@@ -237,10 +237,6 @@ if __name__ == "__main__":
         dfs[key] = mmi[key]
 
     for k, df in dfs.items():
-        # TODO: remove this code after debugging!
-        if 'sigungu' not in k:
-            continue
-
         df = df[df['std_yyyy'] >= 2006]
 
         if 'sigungu' in k or 'sido' in k:

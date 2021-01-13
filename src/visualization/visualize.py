@@ -1,14 +1,9 @@
-import datetime
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from ipywidgets import widgets
 import plotly.express as px
-from pathlib import Path
-import plotly.io as pio
-from src.env import project_dir, data_dir
-from src.dictionary import translate, region2ko, unit2ko
+import plotly.graph_objects as go
+
+from src.dictionary import translate
+from src.env import project_dir
 
 
 def plot_lines(df, y, title, save_name):
@@ -61,37 +56,60 @@ def plot_shares_stacked(df, key, var):
     colors = px.colors.qualitative.Plotly
     pastels = px.colors.qualitative.Pastel1
     color_discrete_map = {
-        'Bottom 50%': colors[0],
-        'Middle 40%': colors[2],
-        'Top 10%': colors[1],
-        'Bottom 20%': pastels[1],
-        'Top 1%': pastels[0]
+        '하위 50%': colors[0],
+        '중위 30%': colors[2],
+        '상위 20%': colors[1],
+        '상위 10%': pastels[4],
+        '하위 20%': pastels[1],
+        '상 1%': pastels[0]
     }
 
+    bar_df = df.loc[df[('var', 'Unnamed: 1_level_1')] == var, ["std_yyyy", 'share']]
+    bar_df = bar_df.set_index(('std_yyyy', 'Unnamed: 2_level_1')).stack()
+    bar_df.index = bar_df.index.rename([translate('std_yyyy'), '소득그룹'])
+    bar_df = bar_df.rename(columns={'share': translate('share')}).reset_index()
+    bar_df = bar_df[bar_df[translate('std_yyyy')] >= 2006]
+
     fig = px.bar(
-        df[(df['var'] == var) & (df['income_group'].apply(lambda x: x in ['Bottom 50%', 'Middle 40%', 'Top 10%']))],
-        x="std_yyyy", y="share", color="income_group",
-        title=f"{translate(key)} {translate(var)} 점유율",
+        bar_df[bar_df['소득그룹'].apply(lambda x: x in ['하위 50%', '중위 30%', '상위 20%'])],
+        x=translate("std_yyyy"), y=translate("share"), color="소득그룹",
         color_discrete_map=color_discrete_map,
+        category_orders={'소득그룹': ['하위 50%', '중위 30%', '상위 20%']},
         width=50 * 12, height=50 * 8
     )
 
-    bottom20 = df[(df['var'] == var) & (df['income_group'] == 'Bottom 20%')]
-    fig.add_trace(go.Scatter(x=bottom20.std_yyyy, y=bottom20.share,
-                             mode='lines+markers',
-                             name='Bottom 20%',
-                             line=dict(color=pastels[1]),
-                             marker=dict(color=pastels[1])))
+    fig.update_layout(
+        xaxis=dict(
+            tickmode='array',
+            tickvals=[2006, 2010, 2014, 2018],),
+        margin={"r": 16, "t": 24, "l": 36, "b": 16},
+    )
 
-    top1 = df[(df['var'] == var) & (df['income_group'] == 'Top 1%')].copy()
-    top1['share'] = 1 - top1['share']
-    fig.add_trace(go.Scatter(x=top1.std_yyyy, y=top1.share,
+    bottom20 = bar_df[bar_df['소득그룹'] == '하위 20%']
+    if bottom20[translate('share')].sum() > 0:
+        fig.add_trace(go.Scatter(x=bottom20[translate('std_yyyy')], y=bottom20[translate('share')],
+                                 mode='lines+markers',
+                                 name='하위 20%',
+                                 line=dict(color=pastels[1]),
+                                 marker=dict(color=pastels[1])))
+
+    top10 = bar_df[bar_df['소득그룹'] == '상위 10%']
+    top10[translate('share')] = 1 - top10[translate('share')]
+    fig.add_trace(go.Scatter(x=top10[translate('std_yyyy')], y=top10[translate('share')],
                              mode='lines+markers',
-                             name='Top 1%',
+                             name='상위 10%',
+                             line=dict(color=pastels[4]),
+                             marker=dict(color=pastels[4])))
+
+    top1 = bar_df[bar_df['소득그룹'] == '상위 1%']
+    top1[translate('share')] = 1 - top1[translate('share')]
+    fig.add_trace(go.Scatter(x=top1[translate('std_yyyy')], y=top1[translate('share')],
+                             mode='lines+markers',
+                             name='상위 1%',
                              line=dict(color=pastels[0]),
                              marker=dict(color=pastels[0])))
-    path_obj = project_dir / 'reports' / 'figures' / f"share_stacked_{key}-{var}.png"
-    fig.write_image(str(path_obj))
+    path_obj = project_dir / 'reports' / 'figures' / f"{translate(key)} {translate(var)} {translate('share')}.png"
+    fig.write_image(str(path_obj), scale=3)
     return fig
 
 
