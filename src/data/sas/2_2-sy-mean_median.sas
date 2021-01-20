@@ -82,7 +82,8 @@ quit;
 %if "&unit_prefix"="hh" or "&unit_prefix"="eq" %then %do;
 	proc sql;
 	create table &savename as
-	select &groupby_vars
+	select "&var" as var length=32
+		, &groupby_vars
 		, mean(&var) as mean
 		, median(&var) as median
 		, count(*) as count
@@ -130,7 +131,7 @@ quit;
 
 %macro compute_mean_median(
 	region /* KR or SEOUL or ~PANEL*/,
-	unit /* adult, earner, capita, hh or eq*/,
+	unit /* adult, earner, capita, hh1, hh2 or eq*/,
 	vnames /* list of variable names, space separated */,
 	subregunit='' /* sido for KR, sigungu for SEOUL*/,
 	earner=0 /* whether or not to filter only earners*/,
@@ -333,10 +334,16 @@ run;
 /*quit;*/
 
 /*proc export data=out.seoul_earner_2018_by_gaibja_type*/
-/*	/* TODO: CHANGE OUTFILE PATH TO mean_median.xlsx? */*/
+	/* TODO: CHANGE OUTFILE PATH TO mean_median.xlsx? */
 /*	outfile="/userdata07/room285/data_out/output-mean_median/mean_median.xlsx" */
 /*	DBMS=xlsx*/
 /*	replace;*/
 /*	sheet="seoul_earner_2018_gaibja_type";*/
 /*run;*/
+
+%let vnames=prop_txbs_tot prop_txbs_hs prop_txbs_bldg prop_txbs_lnd;
+/*%compute_mean_median(KR, hh1, vnames=&vnames, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, hh1, vnames=&vnames, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, hh2, vnames=&vnames, year_lb=2006, year_ub=2018);*/
+/*%compute_mean_median(SEOUL, hh2, vnames=&vnames, subregunit=sigungu, year_lb=2006, year_ub=2018);*/
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/

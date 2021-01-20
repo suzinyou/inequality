@@ -172,6 +172,11 @@ run;
 
 /*%compute_quantiles(SEOUL, adult, vnames=inc_fin, adult_age=20, earner=0, year_lb=2008, year_ub=2018);*/
 /*%compute_quantiles(SEOUL, earner, vnames=inc_fin, year_lb=2008, year_ub=2018);*/
+/*%compute_quantiles(seoul, capita, vnames=inc_tot, year_lb=2018, year_ub=2018);*/
+/*%compute_quantiles(seoul, eq2, vnames=inc_tot, year_lb=2018, year_ub=2018);*/
 /*--------------------------RUN COMPLETE UP TO HERE-------------------------------*/
-%compute_quantiles(seoul, capita, vnames=inc_tot, year_lb=2018, year_ub=2018);
-%compute_quantiles(seoul, eq2, vnames=inc_tot, year_lb=2018, year_ub=2018);
+
+%let vnames=prop_txbs_tot prop_txbs_hs prop_txbs_bldg prop_txbs_lnd;
+%compute_quantiles(KR, hh1, vnames=&vnames, year_lb=2006, year_ub=2018);
+%compute_quantiles(SEOUL, hh1, vnames=&vnames, year_lb=2006, year_ub=2018);
+%compute_quantiles(SEOUL, hh2, vnames=&vnames, year_lb=2006, year_ub=2018);

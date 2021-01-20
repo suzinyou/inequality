@@ -174,7 +174,7 @@ def plot_lines(_df, stat, color_col, key, var=None, var_prefix_filter=None, face
     #         annotations.append(dict(xref='paper', x=1.01, y=y_trace, xanchor='left', yanchor='middle', text=label, showarrow=False))
     #     fig.update_layout(annotations=annotations)
 
-    fig.write_image(str(project_dir / "reports" / "figures" / f"{title}.png"), scale=3)
+    fig.write_image(str(project_dir / "reports" / "figures" / f"{title}.png"), scale=4)
 
     return fig
 
@@ -260,28 +260,34 @@ if __name__ == "__main__":
                 for var_group in ['inc', 'prop_txbs']:
                     if df['var'].apply(lambda x: not x.startswith(var_group)).all():
                         continue
-                    plot_lines(df, stat='mean_real', key=k, var_prefix_filter=var_group, color_col='region', facet_col='var',
-                               textlabel=True)
-                    plot_lines(df, stat='median_real', key=k, var_prefix_filter=var_group, color_col='region', facet_col='var',
-                               textlabel=True)
+                    plot_lines(df, stat='mean_real', key=k, var_prefix_filter=var_group, color_col='region',
+                               facet_col='var',
+                               textlabel=False)
+                    plot_lines(df, stat='median_real', key=k, var_prefix_filter=var_group, color_col='region',
+                               facet_col='var',
+                               textlabel=False)
 
                     if 'gini' in df.columns:
-                        fig = plot_lines(df, stat='gini', key=k, var_prefix_filter=var_group, color_col='region', facet_col='var',
-                                         textlabel=True)
+                        fig = plot_lines(df, stat='gini', key=k, var_prefix_filter=var_group, color_col='region',
+                                         facet_col='var',
+                                         textlabel=False)
                         if not df['iqsr'].isnull().all():
-                            fig = plot_lines(df, stat='iqsr', key=k, var_prefix_filter=var_group, color_col='region', facet_col='var',
-                                             textlabel=True)
-                        fig = plot_lines(df, stat='rpr', key=k, var_prefix_filter=var_group, color_col='region', facet_col='var',
-                                         textlabel=True)
+                            fig = plot_lines(df, stat='iqsr', key=k, var_prefix_filter=var_group, color_col='region',
+                                             facet_col='var',
+                                             textlabel=False)
+                        fig = plot_lines(df, stat='rpr', key=k, var_prefix_filter=var_group, color_col='region',
+                                         facet_col='var',
+                                         textlabel=False)
 
         else:
             for var_group in ['inc', 'prop_txbs']:
                 if df['var'].apply(lambda x: not x.startswith(var_group)).all():
                     continue
-                fig = plot_lines(df, stat='mean_real', key=k, var_prefix_filter=var_group, color_col='var', facet_col='var')
-                fig = plot_lines(df, stat='median_real', key=k, var_prefix_filter=var_group, color_col='var', facet_col='var')
+                fig = plot_lines(df, stat='mean_real', key=k, var_prefix_filter=var_group, color_col='var',
+                                 facet_col='var')
+                fig = plot_lines(df, stat='median_real', key=k, var_prefix_filter=var_group, color_col='var',
+                                 facet_col='var')
 
         # if 'num_indi' in df.columns or 'num_hh' in df.columns:
         #     for vname in df['var'].unique():
         #         plot_population(df, vname, k)
-

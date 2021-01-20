@@ -169,14 +169,14 @@ run;
 
 /* 1인 가구 데려오기 */
 /*proc sql;*/
-/*create table work.seoul_single_hh_head_18 as*/
+/*create table store.seoul_single_hh_head_18 as*/
 /*select **/
 /*from store.seoul_hh2*/
 /*where STD_YYYY="2018" and hh_size=1;*/
 /*quit;*/
 
 /*%earner_stat(store.seoul_multi_hh_head_18, earner_stat_multi_hh_head_2018);*/
-/*%earner_stat(work.seoul_single_hh_head_18, earner_stat_single_hh_head_2018);*/
+/*%earner_stat(store.seoul_single_hh_head_18, earner_stat_single_hh_head_2018);*/
 
 /* 평균 세대/가구원수...  */
 %MACRO mean_hh_size_dataset(i, region, unit, year_lb, year_ub);
@@ -212,7 +212,7 @@ run;
 %mend;
 /*%mean_hh_size;*/
 
-/* 의료급여수급률 (개인) */
+/* 구별 의료급여수급률 (개인) */
 %MACRO GAIBJA_TYPE_7_OR_8;
 %LET savename=gaibja_type_7_or_8_seoul_18;
 proc sql;
@@ -233,18 +233,42 @@ proc export data=out.&savename
 	sheet="&savename";
 run;
 %MEND;
+/*%GAIBJA_TYPE_7_OR_8;*/
 
-/* 월평균 가구총소득 구간별 가구주 성별, 연령대, 가구원수*/
-%MACRO GET_GROUP_COUNT(i, GROUPBY_VAR);
+
+%MACRO MONTHLY_HH_INC_DIST;
 PROC SQL;
-CREATE TABLE tmp_&i AS
-SELECT MONTHLY_INC_TOT
-	, "&GROUPBY_VAR" AS GROUP_VAR length=16
-	, &GROUPBY_VAR AS GROUP	length=16
-	, COUNT(*) AS COUNT
-FROM TMP
-GROUP BY MONTHLY_INC_TOT, &GROUPBY_VAR;
+CREATE TABLE HH_INCOME_GROUP_18 AS
+SELECT CASE when inc_tot/12>=0*10**4 and inc_tot/12<100*10**4 then "0만-100만"
+		when inc_tot/12>=100*10**4 and inc_tot/12<200*10**4 then "100만-200만"
+		when inc_tot/12>=200*10**4 and inc_tot/12<300*10**4 then "200만-300만"
+		when inc_tot/12>=300*10**4 and inc_tot/12<400*10**4 then "300만-400만"
+		when inc_tot/12>=400*10**4 and inc_tot/12<500*10**4 then "400만-500만"
+		when inc_tot/12>=500*10**4 and inc_tot/12<600*10**4 then "500만-600만"
+		when inc_tot/12>=600*10**4 and inc_tot/12<700*10**4 then "600만-700만"
+		when inc_tot/12>=700*10**4 and inc_tot/12<800*10**4 then "700만-800만"
+		when inc_tot/12>=800*10**4 and inc_tot/12<900*10**4 then "800만-900만"
+		ELSE "900만+" END AS MONTHLY_INC_TOT
+	, SEX_TYPE, HH_SIZE_GROUP, AGE_GROUP
+FROM STORE.SEOUL_HH2
+WHERE STD_YYYY="2018";
 QUIT;
+
+ods excel file="/userdata07/room285/data_out/output-household_validation/household-monthly_inc_tot_dist.xlsx"
+	options(sheet_interval='none' sheet_name="monthly_hh_inc_tot_distribution");
+
+PROC TABULATE DATA=WORK.HH_INCOME_GROUP_18;
+CLASS MONTHLY_INC_TOT SEX_TYPE age_group hh_size_group;
+TABLE MONTHLY_INC_TOT*N, (SEX_TYPE HH_SIZE_GROUP AGE_GROUP) / NOCELLMERGE;
+RUN;
+
+PROC TABULATE DATA=WORK.HH_INCOME_GROUP_18;
+CLASS MONTHLY_INC_TOT SEX_TYPE age_group hh_size_group;
+TABLE MONTHLY_INC_TOT*colpctn, (SEX_TYPE HH_SIZE_GROUP AGE_GROUP) / NOCELLMERGE;
+RUN;
+
+ods excel close;
 %MEND;
 
 
+/*%MONTHLY_HH_INC_DIST;*/

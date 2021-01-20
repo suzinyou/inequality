@@ -9,61 +9,61 @@ libname STORE '/userdata07/room285/data_out/data_store';
 /* 	store.seoulpanel2 = store.seoulpanel과 동일하지만 재편된 가구 id도 붙어있는 데이터셋*/
 /* 	HHRR_HEAD_INDI_DSCM_NO = 주민등록세대주*/
 /* 	new_hh_id = 재편가구주*/
-/*proc sql;*/
-/*create table seoul_indi_18 as*/
-/*select INDI_DSCM_NO*/
-/*	, HHRR_HEAD_INDI_DSCM_NO */
-/*	, new_hh_id*/
-/*	, inc_wage+inc_bus as inc_labor_18*/
-/*	, case when sex_type="2" then " 여성" when sex_type="1" then "남성" else "" end as is_female*/
-/*	, case when foreigner_y="Y" then " 외국인" else "내국인" end as is_foreigner*/
-/*	, case when age>=29 then cat("   ", put(age, 2.)) else "28" end as age_category*/
-/*	, case when cmpr_dsb_grade="" then "없음" else cat("      ", cmpr_dsb_grade) end as cmpr_dsb_grade_filled*/
-/*	, min(12, sum_wrk_m) as sum_wrk_m_clipped*/
-/*	, min(12, hi_cnt_m) as hi_cnt_m_clipped*/
-/*	, case when firm_scl_enter_nop_id<5 then "1~5"*/
-/*		when firm_scl_enter_nop_id between 5 and 29 then "    5~29"*/
-/*		when firm_scl_enter_nop_id between 30 and 99 then "   30~99"*/
-/*		when firm_scl_enter_nop_id between 100 and 299 then "  100~299"*/
-/*		else " 300+" end as firm_size_group*/
-/*	, gaibja_type*/
-/*	, case when inc_wage+inc_bus=0 then 0 else inc_wage / (inc_wage+inc_bus) end as frac_wage*/
-/*	, case when sigungu in ("110", "140") then "     중앙"*/
-/*		when sigungu in ("170", "440", "410") then "    마포서대문용산"*/
-/*		when sigungu in ("650", "680", "710") then "   강남3구"*/
-/*		when sigungu in ("305", "320", "350") then "  동북3구"*/
-/*		when sigungu in ("530", "545", "620") then " 관구금"*/
-/*		else "기타" end as gu_group*/
-/*from store.SEOULPANEL2 */
-/**/
-/*where age >= 28 and age <= 32 and STD_YYYY="2018" and sido="11";*/
-/*quit;*/
+proc sql;
+create table seoul_indi_18 as
+select INDI_DSCM_NO
+	, HHRR_HEAD_INDI_DSCM_NO 
+	, new_hh_id
+	, inc_wage+inc_bus as inc_labor_18
+	, case when sex_type="2" then " 여성" when sex_type="1" then "남성" else "" end as is_female
+	, case when foreigner_y="Y" then " 외국인" else "내국인" end as is_foreigner
+	, case when age>=29 then cat("   ", put(age, 2.)) else "28" end as age_category
+	, case when cmpr_dsb_grade="" then "없음" else cat("      ", cmpr_dsb_grade) end as cmpr_dsb_grade_filled
+	, min(12, sum_wrk_m) as sum_wrk_m_clipped
+	, min(12, hi_cnt_m) as hi_cnt_m_clipped
+	, case when firm_scl_enter_nop_id<5 then "1~5"
+		when firm_scl_enter_nop_id between 5 and 29 then "    5~29"
+		when firm_scl_enter_nop_id between 30 and 99 then "   30~99"
+		when firm_scl_enter_nop_id between 100 and 299 then "  100~299"
+		else " 300+" end as firm_size_group
+	, gaibja_type
+	, case when inc_wage+inc_bus=0 then 0 else inc_wage / (inc_wage+inc_bus) end as frac_wage
+	, case when sigungu in ("110", "140") then "     중앙"
+		when sigungu in ("170", "440", "410") then "    마포서대문용산"
+		when sigungu in ("650", "680", "710") then "   강남3구"
+		when sigungu in ("305", "320", "350") then "  동북3구"
+		when sigungu in ("530", "545", "620") then " 관구금"
+		else "기타" end as gu_group
+from store.SEOULPANEL2 
+
+where age >= 28 and age <= 32 and STD_YYYY="2018" and sido="11";
+quit;
 
 /* Household variables from 2018 */
 /* HHRR_HEAD_INDI_DSCM_NO = 재편가구 id */
-/*proc sql;*/
-/*create table seoul_hh_18 as*/
-/*select HHRR_HEAD_INDI_DSCM_NO */
-/*	, hh_size*/
-/*	, prop_txbs_tot as hh_prop_txbs_tot_18*/
-/*from store.seoulpanel_hh2*/
-/*where STD_YYYY="2018";*/
-/*quit;*/
+proc sql;
+create table seoul_hh_18 as
+select HHRR_HEAD_INDI_DSCM_NO 
+	, hh_size
+	, prop_txbs_tot as hh_prop_txbs_tot_18
+from store.seoulpanel_hh2
+where STD_YYYY="2018";
+quit;
 
 /* Individual(household) variables from 2006 */
-/*proc sql;*/
-/*create table seoul_indi_06 as*/
-/*select INDI_DSCM_NO*/
-/*	, inc_tot * hh_size**2 as hh_inc_tot_06*/
-/*	, prop_txbs_tot * hh_size**2 as hh_prop_txbs_tot_06*/
-/*	, case when sido="11" and input(sigungu, 3.) <=440 then "    서울강북"*/
-/*		when sido="11" and input(sigungu, 3.) > 440 then "   서울강남"*/
-/*		when sido="28" then "  인천"*/
-/*		when sido="41" then " 경기"*/
-/*		else "기타" end as region_06*/
-/*from store.seoulpanel_eq2*/
-/*where STD_YYYY="2006";*/
-/*quit;*/
+proc sql;
+create table seoul_indi_06 as
+select INDI_DSCM_NO
+	, inc_tot * hh_size**2 as hh_inc_tot_06
+	, prop_txbs_tot * hh_size**2 as hh_prop_txbs_tot_06
+	, case when sido="11" and input(sigungu, 3.) <=440 then "    서울강북"
+		when sido="11" and input(sigungu, 3.) > 440 then "   서울강남"
+		when sido="28" then "  인천"
+		when sido="41" then " 경기"
+		else "기타" end as region_06
+from store.seoulpanel_eq2
+where STD_YYYY="2006";
+quit;
 
 proc sql;
 create table store.mobility_data as
@@ -88,7 +88,6 @@ quit;
 /*%create_dataset;*/
 
 %macro print_descriptive_stats;
-title "";
 /*proc means data=store.mobility_data;*/
 /*	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06;*/
 /*run;*/
@@ -102,17 +101,23 @@ title "";
 	%end;
 
 proc univariate data=store.mobility_data;
-	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06;
+	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06 hh_prop_txbs_tot_18 inc_labor_18;
 	ods output BasicMeasures=varinfo;
 run;
 
+proc sort data=store.mobility_data;
+	by is_female;
+run;
 proc means data=store.mobility_data;
-	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06;
+	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06 hh_prop_txbs_tot_18 inc_labor_18;
 	by is_female;
 run;
 
+proc sort data=store.mobility_data;
+	by region_06;
+run;
 proc means data=store.mobility_data;
-	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06;
+	var sum_wrk_m_clipped hi_cnt_m_clipped frac_wage hh_size log_hh_inc_tot_06 log_hh_prop_txbs_tot_06 hh_prop_txbs_tot_18 inc_labor_18;
 	by region_06;
 run;
 %mend;

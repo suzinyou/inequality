@@ -85,10 +85,7 @@ run;
 %mend count_and_mean;
 
 
-/*%count_and_mean(seoul, hh2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, hh2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);*/
-/*%count_and_mean(seoul, eq2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);*/
-%count_and_mean(seoul, hh2, group_vars=has_house,year_lb=2018,year_ub=2018);
-%count_and_mean(seoul, eq2, group_vars=has_house,year_lb=2018,year_ub=2018);
-
+%count_and_mean(seoul, hh2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);
+%count_and_mean(seoul, hh2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);
+%count_and_mean(seoul, eq2, group_vars=hh_size_group age_group sex_type working gaibja_type_major has_house has_disability,year_lb=2018,year_ub=2018);
+%count_and_mean(seoul, eq2, group_vars=age_group, filter=single, year_lb=2018,year_ub=2018);

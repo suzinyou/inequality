@@ -34,17 +34,6 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	%let dname=store.&region;
 	%end;
 
-/* Set filtering (where) expressions */
-/*   filter year (can only handle 1 year at a time) */
-%let where_conditions=(input(STD_YYYY, 4.)>=&year_lb and input(STD_YYYY, 4.)<=&year_ub);
-/*   filter earners and/or adults*/
-%if &unit=adult %then %do;
-	%let where_conditions=&where_conditions. and age >= &adult_age;
-	%end;
-%if &unit=earner or &earner=1 %then %do;
-	%let where_conditions=&where_conditions. and &vname > 0;
-	%end;
-
 /* If sub-region unit is specified */
 %let groupby_vars=STD_YYYY;
 %let groupby_join_on=a.STD_YYYY=b.STD_YYYY;
@@ -55,6 +44,19 @@ libname STORE '/userdata07/room285/data_out/data_store';
 	%let groupby_join_on=&groupby_join_on. and a.&subregunit.=b.&subregunit;
 	%let groupby_join_vars=&groupby_join_vars., a.&subregunit;
 	%let columns=&columns.,sigungu;
+	%let where_conditions=(STD_YYYY="2006" or STD_YYYY="2010" or STD_YYYY="2014" or STD_YYYY="2018");
+	%end;
+%else %do;
+	%let where_conditions=(input(STD_YYYY, 4.)>=&year_lb and input(STD_YYYY, 4.)<=&year_ub);
+	%end;
+
+/* Set filtering (where) expressions */
+/*   filter earners and/or adults*/
+%if &unit=adult %then %do;
+	%let where_conditions=&where_conditions. and age >= &adult_age;
+	%end;
+%if &unit=earner or &earner=1 %then %do;
+	%let where_conditions=&where_conditions. and &vname > 0;
 	%end;
 
 /* For DATA step, make a space separated list of groupby variables (without commas) */
@@ -428,6 +430,7 @@ run;
 /*	indices=gini iqsr rpr, */
 /*	subregunit='', earner=0, adult_age=15, year_lb=2014, year_ub=2018);*/
 
+/* 균등화 전국주민, 서울주민, 서울재편가구, 서울25개구별재편가구...*/
 /*%compute_indices(*/
 /*	region=kr, */
 /*	unit=eq1, */
@@ -451,7 +454,8 @@ run;
 /*	indices=gini iqsr rpr,*/
 /*	subregunit='',*/
 /*	year_lb=2006, year_ub=2018);*/
-/**/
+
+/* sanity check */
 /*%compute_indices(*/
 /*	region=seoul, */
 /*	unit=capita, */
@@ -460,23 +464,46 @@ run;
 /*	subregunit='',*/
 /*	year_lb=2006, year_ub=2018);*/
 
-
 /*%compute_indices(*/
 /*	region=seoul, */
 /*	unit=eq2, */
 /*	vnames=inc_tot, */
-/*	indices=gini iqsr,*/
+/*	indices=gini iqsr rpr,*/
 /*	subregunit=sigungu,*/
 /*	year_lb=2006, year_ub=2018);*/
+/*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/
+%let vnames=prop_txbs_tot prop_txbs_hs prop_txbs_bldg prop_txbs_lnd;
+%compute_indices(
+	region=kr, 
+	unit=hh1, 
+	vnames=&vnames, 
+	indices=gini iqsr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);
 
 %compute_indices(
 	region=seoul, 
-	unit=eq2, 
-	vnames=inc_tot, 
-	indices=rpr,
+	unit=hh1, 
+	vnames=&vnames, 
+	indices=gini iqsr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);
+
+%compute_indices(
+	region=seoul, 
+	unit=hh2, 
+	vnames=&vnames, 
+	indices=gini iqsr,
+	subregunit='',
+	year_lb=2006, year_ub=2018);
+
+%compute_indices(
+	region=seoul, 
+	unit=hh2, 
+	vnames=&vnames, 
+	indices=gini iqsr,
 	subregunit=sigungu,
 	year_lb=2006, year_ub=2018);
-/*-------------------------RUN COMPLETE UP TO THIS LINE ------------------------*/
 
 
 %macro poverty_rate_filter(i, dname, vname, filter);
